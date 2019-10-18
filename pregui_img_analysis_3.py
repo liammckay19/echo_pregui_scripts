@@ -18,6 +18,7 @@ from classes_only import Well_well_well as well
 from classes_only import Plate
 
 from datetime import datetime, date, time
+import time as ti
 import json
 
 #Function Definitions
@@ -80,7 +81,7 @@ def save_canny_save_fit(path,sig,low,high,temp): #sig=3,low = 0, high = 30
     
 def main():
 
-    t0=time.time()  ### save time to know how long this script takes (this one takes longer than step 2)
+    t0=ti.time()  ### save time to know how long this script takes (this one takes longer than step 2)
 
     if len(sys.argv) != 3:
         print('Usage: python pregui_analysis.py [plate_dir] [plate temp: 20C/4C]')
@@ -160,7 +161,7 @@ def main():
         json.dump(a, fp)
     print('wrote to json')
 
-    print("time to run: %s"%(time.time()-t0))
+    print("time to run: %s"%(ti.time()-t0))
 
 
 if __name__ == "__main__":
