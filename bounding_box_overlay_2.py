@@ -4,7 +4,7 @@ import time, sys
 import glob
 import os
 import organizeImages as oI
-
+from tqdm import tqdm
 def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh,output_fh):
   ### This is the main function of the script
 
@@ -138,7 +138,7 @@ def main():
     print("overlaying images.")
     print()
     completedWells = 0
-    for i in range(1,97):
+    for i in tqdm(range(1,97)):
       filepaths = sorted(glob.glob(imageDirectory+'/organizedWells/wellNum_'+str(i)+'/*')) # find all images 
       subwell_list = [z.split("/d")[1].split("_")[0] for z in filepaths]
       if len(filepaths) % 3 == 0:

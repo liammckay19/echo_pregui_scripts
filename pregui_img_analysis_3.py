@@ -18,7 +18,9 @@ from classes_only import Well_well_well as well
 from classes_only import Plate
 
 from datetime import datetime, date, time
+import time as ti
 import json
+from tqdm import tqdm
 
 #Function Definitions
 #Params
@@ -64,91 +66,23 @@ def draw_circles_on_image_center(image,cx,cy,radii,colour,dotsize):
         image[circy,circx] = colour
         image[cy[0]-dotsize:cy[0]+dotsize,cx[0]-dotsize:cx[0]+dotsize] = colour
 
-def save_canny_save_fit(path,sig,low,high): #sig=3,low = 0, high = 30
+def save_canny_save_fit(path,sig,low,high,temp): #sig=3,low = 0, high = 30
     zstack = io.imread(path)  
     image = img_as_ubyte(zstack[:,:,0]) # finds the top x-y pixels in the z-stack
-    
-    #mask = image > 20
-    #fprefix = os.path.basename(path).strip('.jpg')
-    #bn = fprefix + '_CANNY.jpg'
-    #current_dir = os.getcwd()
-    #cannysavepath = current_dir + '/' + plate_dir.strip('/') + '_canny/' + bn
-
     edges = canny(image,sigma=sig,low_threshold=low,high_threshold=high)   # edge detection
-
-    #plt.imsave(fname=str(p + fprefix + '_ubyte.jpg'), arr=image)
-    #plt.imsave(fname=str(p + fprefix + '_bounded.jpg'), arr=mask)
-    #bn = fprefix + '_dropfinder2.jpg'
-    #fitsavepath = current_dir + '/' + plate_dir.strip('/') + '_fit/' + bn
-    #try:
-        #plt.imsave(fname=cannysavepath, arr=edges)
-        #plt.close()
-    #except FileNotFoundError:
-        #print('FileNotFoundError: making ' + plate_dir.strip('/') + '_canny')
-        #os.mkdir(current_dir + '/' + plate_dir.strip('/') + '_canny/')
-        #print('writing ' + cannysavepath)
-        #plt.imsave(fname=cannysavepath, arr=edges)
-        #plt.close()
-    #print(cannysavepath)
-
-
-
     accum_d, cx_d, cy_d, radii_d = circular_hough_transform(135,145,2,edges,1) #edge detection on drop, params: r1,r2,stepsize,image,peaknum. Key params to change are r1&r2 for start & end radius
-    ### This works well for echo RT plate type for rockmaker
+    
+    if temp == '20C': ### This works well for echo RT plate type for rockmaker
+        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(479,495,1,edges,1) #edge detection on well. Units for both are in pixels
+    else: ### This works well for echo 4C plate type for rockmaker
+        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(459,475,1,edges,1) #edge detection on well. Units for both are in pixels
 
-
-    ### room temp well
-    accum_w, cx_w, cy_w, radii_w = circular_hough_transform(479,495,1,edges,1) #edge detection on well. Units for both are in pixels
-    ### This works well for echo 4C plate type for rockmaker
-    accum_w, cx_w, cy_w, radii_w = circular_hough_transform(459,475,1,edges,1) #edge detection on well. Units for both are in pixels
-
-    #try:
-        #im = image
-        #padsize = np.array([(0,100),(0,100)])
-        #pad_im = pad(image,padsize,mode='constant')
-        #fig, ax = plt.subplots(nrows=1,ncols=1,figsize=(20,8))
-        #draw_circles_on_image(pad_im,cx_d,cy_d,radii_d,255,2)
-        #draw_circles_on_image(pad_im,cx_w,cy_w,radii_w,255,2)
-
-        ### Code to draw the inner circle
-        #r_inner = 0.73701*radii_w
-        #r_inner = r_inner.astype(int)
-        #draw_circles_on_image(pad_im,cx_w,cy_w,r_inner,255,2)
-
-        
-        #cx=641
-        #cy=553
-        #rad=487
-        #c, r = circle_perimeter(cx, cy,rad)
-        #pad_im[r,c] = 255
-        #pad_im[cx-2:cx+2,cy-2:cy+2]=255
-
-        #try:
-            #plt.imsave(fname=fitsavepath, arr=pad_im,cmap='Greys_r')
-            #plt.close()
-        #except FileNotFoundError:
-            #print('making ' + plate_dir.strip('/') + '_fit/')
-            #os.mkdir(current_dir + '/' + plate_dir.strip('/') + '_fit/')
-            #print('writing' + bn)
-            #plt.imsave(fname=fitsavepath, arr=pad_im,cmap='Greys_r')
-            #plt.close()
-        #print(fitsavepath)
-    #except IndexError:
-        #print('IndexError' + ' ' + fitsavepath)
-    #plt.imshow(pad_im)
-    #print(path)
     return cx_d,cy_d,radii_d, cx_w, cy_w, radii_w
 
-### This will no longer be called because we will be working with overlayed images: JTB
-def find_image_paths():
-    my_paths = glob.glob('plateID_9792/*/wellNum_*/profileID*') #The plate ID could be a sys.argv
-    my_paths.sort(key=lambda x: (int(x.split('wellNum_')[1].split('/')[0])))
-    return my_paths
     
 def main():
-    # argument is plateID_****
 
-    t0=time.time()  ### save time to know how long this script takes (this one takes longer than step 2)
+    t0=ti.time()  ### save time to know how long this script takes (this one takes longer than step 2)
 
     if len(sys.argv) != 2:
         print('Usage: python pregui_analysis.py [plate_dir]')
@@ -157,85 +91,65 @@ def main():
     
     current_directory = os.getcwd()
     plate_dir = sys.argv[1]
-    
-    ### Aji's code for the not overlayed images
-# my_paths = find_image_paths() #The path string object
-#  image_list = [] #empty holder list
-    # test#,well#,d#
-    #Save format t1w1d1,t2w1d1
-    ##gets only the images
-#  for path in my_paths: #
-#    print(str(path))
-#    images = glob.glob(path + '/*ef*')
-#    images.sort(key=lambda x: int(x.split('_r')[1].split('_ef')[0]))
-        
-#    if len(images)==2:
-#      image = images[1]
-#      image_list.append(image)
 
-    ### Justin's code to run on the overlayed images
     image_list=glob.glob("{}/overlayed/*".format(plate_dir))
     image_list.sort(key=lambda x: (int(x.split('well_')[1].split('_overlay')[0].split("_subwell")[0])))
-    
-    dict_image_path_subwells = \
-    {
-        a.split('well_')[1].split('_overlay')[0].replace("subwell",""):a for a in image_list
-    }
+
+    dict_image_path_subwells = {}
+    for p in image_list:
+        well_subwell=p.split('well_')[1].split('_overlay')[0].replace("subwell","")
+        well,subwell = well_subwell.split("_")
+        well = "{:02d}".format(int(well))
+        well_subwell = well+"_"+subwell
+        dict_image_path_subwells[well_subwell] = p
 
     print(current_directory + '/' + plate_dir.strip('/') + '_offsets.csv') ### eventually do this in the main gui
-
-    #f = open(current_directory + '/' + plate_dir.strip('/') + '_offsets.csv','wa')
-    #f.write('offset_x,offset_y,radii_d,radii_w,cx_d,cy_d,cx_w,cy_w\n')
     
-    wellnames = Plate.well_names
-    plate_to_pickle = Plate(Plate.plate_dict) #empty dictionary
-
-### Don't need incrementer n anymore with fix by JTB
-# n=0 
-    ### JTB added im_idx and enumerate to keep track of image
-    
-
-
-    a = {}
-    
+    # Try to find the plateid.txt file
     try:
         with open(current_directory+"/"+plate_dir+"/plateid.txt", 'r') as plate_id_file:
             plate_id = int(plate_id_file.read().rstrip())
-            a[plate_id] = {}
     except FileNotFoundError:
         print("File Error: plateid.txt not found. JSON will not have plate_id key")
+        plate_id = "UNKNOWN_ID_at_"+plate_dir
+    
 
-    plateKeys = ["date_time"]
-    wellKeys = ["image_path","well_id","subwell","well_radius","well_x","well_y","drop_radius","drop_x","drop_y"]
+    try:
+        with open(current_directory+"/"+plate_dir+"/temperature.txt", 'r') as plate_id_file:
+            plate_temperature = plate_id_file.read().rstrip()
+    except FileNotFoundError:
+        print("File Error: temperature.txt not found. JSON will not have temperature defined")
+        plate_temperature = "UNKNOWN"
+
+    plateKeys = ["date_time","temperature"]
+    wellKeys = ["image_path","well_id","subwell","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
 
     ### Create json output dictionary
+    a = {}
+    a[plate_id] = {}
     a[plate_id] = {key:0 for key in plateKeys}
     a[plate_id]["date_time"] = "Generated on: "+datetime.now().isoformat(" ")
-
-
-    ### Try to get the plate ID saved from before
-
-
-    for im_idx, im_path in sorted(dict_image_path_subwells.items()):
-        print("processing: ", im_idx, im_path)
+    a[plate_id]["temperature"] = plate_temperature
+    if plate_temperature == "UNKNOWN":
+        print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
+    print("Performing image analysis.")
+    for im_idx, im_path in tqdm(sorted(dict_image_path_subwells.items())):
         if im_path:
-            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50) ### calling this function also saves
-
-        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] time saving code (will output zeros)
+            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function also saves
+        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
         ### everything _d is for the drop
         ### plan on keeping the drop information
-        # offset_x = cx_d - cx_w
-        # offset_y = cy_w - cy_d
+        offset_x = cx_d - cx_w
+        offset_y = cy_w - cy_d
         well,subwell = im_idx.split("_")
 
-        str_well_id = wellnames[int(well)-1]
+        str_well_id = Plate.well_names[int(well)-1]
 
         # print(cx_w,cy_w,radii_w,cx_d,cy_d,radii_d,cx_w,cy_w,radii_d,name,im_path,0,0,0)
 
         str_currentWell = "{0}_{1}".format(str_well_id, subwell)
-        print(str_currentWell)
         a[plate_id][str_currentWell] = {key:0 for key in wellKeys}
         a[plate_id][str_currentWell]["image_path"] = im_path
         a[plate_id][str_currentWell]["well_id"] = str_well_id
@@ -246,12 +160,14 @@ def main():
         a[plate_id][str_currentWell]["drop_radius"] = int(radii_d)
         a[plate_id][str_currentWell]["drop_x"] = int(cx_d)
         a[plate_id][str_currentWell]["drop_y"] = int(cy_d)
+        a[plate_id][str_currentWell]["offset_y"] = int(offset_y)
+        a[plate_id][str_currentWell]["offset_x"] = int(offset_x)
 
     with open(current_directory + '/' + plate_dir + '/' +plate_dir.strip('/') + '.json', 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
 
-    print("time to run: %s"%(time.time()-t0))
+    print("time to run: %s minutes"%str(int(ti.time()-t0)/60))
 
 
 if __name__ == "__main__":

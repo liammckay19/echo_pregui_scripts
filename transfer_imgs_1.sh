@@ -1,14 +1,15 @@
 ### Testing for the corect number of input arguments
 ### 	expecting 1 arugment for PlateID
-if [ ! $# -eq 2 ];then
+if [ ! $# -eq 3 ];then
 	echo "Usage Error: incorrect number of arguments
-sh transfer_imgs.sh [plateID] [output_plate_folder]"
+sh transfer_imgs.sh [plateID] [output_plate_folder] [plate_temperature 4c/20c]"
 	exit 1
 fi
 
 ### Take command-line arguments and set them to variables
 plateID=$1
 output_dir=$2
+temperature=$3
 
 ### Make output directory
 mkdir -p "${output_dir}/overlay"
@@ -31,6 +32,7 @@ cat ${output_dir}/log_rsync_init_file_list.txt | grep "${batchID_drop}" | grep "
 cat ${output_dir}/log_rsync_init_file_list.txt | grep "${batchID_overview}" | grep "dl.jpg" >> ${output_dir}/files_to_transfer.txt
 cat ${output_dir}/log_rsync_init_file_list.txt | grep "${batchID_overview}" | grep "dl.jpg" | sed 's/dl/ef/' >> ${output_dir}/files_to_transfer.txt
 echo ${plateID} > ${output_dir}/plateid.txt
+echo ${temperature} > ${output_dir}/temperature.txt
 
 ### transfer files using rsync
 rsync -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@169.230.29.129:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
