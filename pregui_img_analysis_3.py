@@ -163,7 +163,8 @@ def main():
         a[plate_id][str_currentWell]["offset_y"] = int(offset_y)
         a[plate_id][str_currentWell]["offset_x"] = int(offset_x)
 
-    with open(current_directory + '/' + plate_dir + '/' +plate_dir.strip('/') + '.json', 'w') as fp:
+    print(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json')
+    with open(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json', 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
 
