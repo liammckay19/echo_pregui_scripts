@@ -147,6 +147,9 @@ def find_image_paths():
     
 def main():
     # argument is plateID_****
+
+    t0=time.time()  ### save time to know how long this script takes (this one takes longer than step 2)
+
     if len(sys.argv) != 2:
         print('Usage: python pregui_analysis.py [plate_dir]')
         print('Aborting script')
@@ -215,10 +218,10 @@ def main():
 
     for im_idx, im_path in sorted(dict_image_path_subwells.items()):
         print("processing: ", im_idx, im_path)
-        # if im_path:
-            # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50) ### calling this function also saves
+        if im_path:
+            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50) ### calling this function also saves
 
-        cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0]
+        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
         ### everything _d is for the drop
@@ -247,6 +250,9 @@ def main():
     with open(current_directory + '/' + plate_dir + '/' +plate_dir.strip('/') + '.json', 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
+
+    print("time to run: %s"%(time.time()-t0))
+
 
 if __name__ == "__main__":
     main()
