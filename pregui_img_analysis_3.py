@@ -20,6 +20,7 @@ from classes_only import Plate
 from datetime import datetime, date, time
 import time as ti
 import json
+from tqdm import tqdm
 
 #Function Definitions
 #Params
@@ -83,18 +84,17 @@ def main():
 
     t0=ti.time()  ### save time to know how long this script takes (this one takes longer than step 2)
 
-    if len(sys.argv) != 3:
-        print('Usage: python pregui_analysis.py [plate_dir] [plate temp: 20c/4c]')
+    if len(sys.argv) != 2:
+        print('Usage: python pregui_analysis.py [plate_dir]')
         print('Aborting script')
         sys.exit()
     
     current_directory = os.getcwd()
     plate_dir = sys.argv[1]
-    plate_temperature = sys.argv[2]
 
     image_list=glob.glob("{}/overlayed/*".format(plate_dir))
     image_list.sort(key=lambda x: (int(x.split('well_')[1].split('_overlay')[0].split("_subwell")[0])))
-    
+
     dict_image_path_subwells = {}
     for p in image_list:
         well_subwell=p.split('well_')[1].split('_overlay')[0].replace("subwell","")
@@ -105,28 +105,38 @@ def main():
 
     print(current_directory + '/' + plate_dir.strip('/') + '_offsets.csv') ### eventually do this in the main gui
     
-    a = {}
+    # Try to find the plateid.txt file
     try:
         with open(current_directory+"/"+plate_dir+"/plateid.txt", 'r') as plate_id_file:
             plate_id = int(plate_id_file.read().rstrip())
-            a[plate_id] = {}
     except FileNotFoundError:
         print("File Error: plateid.txt not found. JSON will not have plate_id key")
         plate_id = "UNKNOWN_ID_at_"+plate_dir
+    
+
+    try:
+        with open(current_directory+"/"+plate_dir+"/temperature.txt", 'r') as plate_id_file:
+            plate_temperature = plate_id_file.read().rstrip()
+    except FileNotFoundError:
+        print("File Error: temperature.txt not found. JSON will not have temperature defined")
+        plate_temperature = "UNKNOWN"
 
     plateKeys = ["date_time","temperature"]
     wellKeys = ["image_path","well_id","subwell","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
 
     ### Create json output dictionary
+    a = {}
+    a[plate_id] = {}
     a[plate_id] = {key:0 for key in plateKeys}
     a[plate_id]["date_time"] = "Generated on: "+datetime.now().isoformat(" ")
     a[plate_id]["temperature"] = plate_temperature
-
-    for im_idx, im_path in sorted(dict_image_path_subwells.items()):
-        print("processing: ", im_idx, im_path)
-        # if im_path:
-            # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function also saves
-        cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
+    if plate_temperature == "UNKNOWN":
+        print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
+    print("Performing image analysis.")
+    for im_idx, im_path in tqdm(sorted(dict_image_path_subwells.items())):
+        if im_path:
+            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function also saves
+        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
         ### everything _d is for the drop
@@ -140,7 +150,6 @@ def main():
         # print(cx_w,cy_w,radii_w,cx_d,cy_d,radii_d,cx_w,cy_w,radii_d,name,im_path,0,0,0)
 
         str_currentWell = "{0}_{1}".format(str_well_id, subwell)
-        print(str_currentWell)
         a[plate_id][str_currentWell] = {key:0 for key in wellKeys}
         a[plate_id][str_currentWell]["image_path"] = im_path
         a[plate_id][str_currentWell]["well_id"] = str_well_id
