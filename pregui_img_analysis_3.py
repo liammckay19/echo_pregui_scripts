@@ -64,15 +64,16 @@ def draw_circles_on_image_center(image,cx,cy,radii,colour,dotsize):
         image[circy,circx] = colour
         image[cy[0]-dotsize:cy[0]+dotsize,cx[0]-dotsize:cx[0]+dotsize] = colour
 
-def save_canny_save_fit(path,sig,low,high): #sig=3,low = 0, high = 30
+def save_canny_save_fit(path,sig,low,high,temp): #sig=3,low = 0, high = 30
     zstack = io.imread(path)  
     image = img_as_ubyte(zstack[:,:,0]) # finds the top x-y pixels in the z-stack
     edges = canny(image,sigma=sig,low_threshold=low,high_threshold=high)   # edge detection
     accum_d, cx_d, cy_d, radii_d = circular_hough_transform(135,145,2,edges,1) #edge detection on drop, params: r1,r2,stepsize,image,peaknum. Key params to change are r1&r2 for start & end radius
-    ### room temp well
-    accum_w, cx_w, cy_w, radii_w = circular_hough_transform(479,495,1,edges,1) #edge detection on well. Units for both are in pixels
-    ### This works well for echo 4C plate type for rockmaker
-    accum_w, cx_w, cy_w, radii_w = circular_hough_transform(459,475,1,edges,1) #edge detection on well. Units for both are in pixels
+    
+    if temp == '20C': ### This works well for echo RT plate type for rockmaker
+        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(479,495,1,edges,1) #edge detection on well. Units for both are in pixels
+    else: ### This works well for echo 4C plate type for rockmaker
+        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(459,475,1,edges,1) #edge detection on well. Units for both are in pixels
 
     return cx_d,cy_d,radii_d, cx_w, cy_w, radii_w
 
@@ -81,8 +82,8 @@ def main():
 
     t0=time.time()  ### save time to know how long this script takes (this one takes longer than step 2)
 
-    if len(sys.argv) != 2:
-        print('Usage: python pregui_analysis.py [plate_dir]')
+    if len(sys.argv) != 3:
+        print('Usage: python pregui_analysis.py [plate_dir] [plate temp: 20C/4C]')
         print('Aborting script')
         sys.exit()
     
