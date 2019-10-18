@@ -84,63 +84,58 @@ def main():
     t0=ti.time()  ### save time to know how long this script takes (this one takes longer than step 2)
 
     if len(sys.argv) != 3:
-        print('Usage: python pregui_analysis.py [plate_dir] [plate temp: 20C/4C]')
+        print('Usage: python pregui_analysis.py [plate_dir] [plate temp: 20c/4c]')
         print('Aborting script')
         sys.exit()
     
     current_directory = os.getcwd()
     plate_dir = sys.argv[1]
     plate_temperature = sys.argv[2]
-    
 
     image_list=glob.glob("{}/overlayed/*".format(plate_dir))
     image_list.sort(key=lambda x: (int(x.split('well_')[1].split('_overlay')[0].split("_subwell")[0])))
     
-    dict_image_path_subwells = \
-    {
-        a.split('well_')[1].split('_overlay')[0].replace("subwell",""):a for a in image_list
-    }
+    dict_image_path_subwells = {}
+    for p in image_list:
+        well_subwell=p.split('well_')[1].split('_overlay')[0].replace("subwell","")
+        well,subwell = well_subwell.split("_")
+        well = "{:02d}".format(int(well))
+        well_subwell = well+"_"+subwell
+        dict_image_path_subwells[well_subwell] = p
 
     print(current_directory + '/' + plate_dir.strip('/') + '_offsets.csv') ### eventually do this in the main gui
     
-    wellnames = Plate.well_names
-    plate_to_pickle = Plate(Plate.plate_dict) #empty dictionary
-
     a = {}
-    
     try:
         with open(current_directory+"/"+plate_dir+"/plateid.txt", 'r') as plate_id_file:
             plate_id = int(plate_id_file.read().rstrip())
             a[plate_id] = {}
     except FileNotFoundError:
         print("File Error: plateid.txt not found. JSON will not have plate_id key")
+        plate_id = "UNKNOWN_ID_at_"+plate_dir
 
-    plateKeys = ["date_time"]
-    wellKeys = ["image_path","well_id","subwell","well_radius","well_x","well_y","drop_radius","drop_x","drop_y"]
+    plateKeys = ["date_time","temperature"]
+    wellKeys = ["image_path","well_id","subwell","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
 
     ### Create json output dictionary
     a[plate_id] = {key:0 for key in plateKeys}
     a[plate_id]["date_time"] = "Generated on: "+datetime.now().isoformat(" ")
-
-
-    ### Try to get the plate ID saved from before
-
+    a[plate_id]["temperature"] = plate_temperature
 
     for im_idx, im_path in sorted(dict_image_path_subwells.items()):
         print("processing: ", im_idx, im_path)
-        if im_path:
-            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function also saves
-
-        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] time saving code (will output zeros)
+        # if im_path:
+            # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function also saves
+        cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
         ### everything _d is for the drop
         ### plan on keeping the drop information
-        # offset_x = cx_d - cx_w
-        # offset_y = cy_w - cy_d
+        offset_x = cx_d - cx_w
+        offset_y = cy_w - cy_d
         well,subwell = im_idx.split("_")
 
-        str_well_id = wellnames[int(well)-1]
+        str_well_id = Plate.well_names[int(well)-1]
 
         # print(cx_w,cy_w,radii_w,cx_d,cy_d,radii_d,cx_w,cy_w,radii_d,name,im_path,0,0,0)
 
@@ -156,12 +151,14 @@ def main():
         a[plate_id][str_currentWell]["drop_radius"] = int(radii_d)
         a[plate_id][str_currentWell]["drop_x"] = int(cx_d)
         a[plate_id][str_currentWell]["drop_y"] = int(cy_d)
+        a[plate_id][str_currentWell]["offset_y"] = int(offset_y)
+        a[plate_id][str_currentWell]["offset_x"] = int(offset_x)
 
     with open(current_directory + '/' + plate_dir + '/' +plate_dir.strip('/') + '.json', 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
 
-    print("time to run: %s"%(ti.time()-t0))
+    print("time to run: %s minutes"%str(int(ti.time()-t0)/60))
 
 
 if __name__ == "__main__":
