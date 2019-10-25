@@ -122,7 +122,7 @@ def main():
         plate_temperature = "UNKNOWN"
 
     plateKeys = ["date_time","temperature"]
-    wellKeys = ["image_path","well_id","subwell","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
+    wellKeys = ["image_path","well_id","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
 
     ### Create json output dictionary
     a = {}
@@ -153,7 +153,6 @@ def main():
         a[plate_id][str_currentWell] = {key:0 for key in wellKeys}
         a[plate_id][str_currentWell]["image_path"] = im_path
         a[plate_id][str_currentWell]["well_id"] = str_well_id
-        a[plate_id][str_currentWell]["subwell"] = subwell ### Don't know how to get this information
         a[plate_id][str_currentWell]["well_radius"] = int(radii_w)
         a[plate_id][str_currentWell]["well_x"] = int(cx_w)
         a[plate_id][str_currentWell]["well_y"] = int(cy_w)

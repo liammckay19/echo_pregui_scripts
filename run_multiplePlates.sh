@@ -19,7 +19,7 @@ if [ "$#" -ne 3 ]; then
 else
 	if [ ! $# -eq 3 ]; then
 		echo "Usage Error: incorrect number of arguments
-	sh run.sh [plateID] [output_plate_folder] [plate_temperature 4c/20c]"
+	sh run.sh [output_plate_folder] [plate_temperature 4c/20c] [plateID]"
 		exit 1
 	fi
 	output_dir=$1

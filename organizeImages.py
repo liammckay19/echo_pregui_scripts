@@ -13,10 +13,11 @@ def organizeImages(imageDirectory):
 			except FileExistsError:
 				print(newDirectory, 'already exists. continuing')
 			for path in glob.glob(imageDirectory+"/batchID*/*/profileID_1/*.jpg"):
-				parent_directory_paths = path.split("/")
-				if not os.path.exists(""+newDirectory+"/"+parent_directory_paths[2]):
-					os.mkdir(""+newDirectory+"/"+parent_directory_paths[2])
-				os.system("cp " + path + " " + ""+newDirectory+"/"+parent_directory_paths[2]+"/"+parent_directory_paths[-1])
+				a = path.split("/")
+				well_num = "".join([(a[x] if c==0 else '') for x,c in enumerate([s.find('well') for s in a])]) # just gets the wellNum_## folder name
+				if not os.path.exists(""+newDirectory+"/"+well_num):
+					os.mkdir(""+newDirectory+"/"+well_num)
+				os.system("cp " + path + " " + ""+newDirectory+"/"+well_num+"/"+a[-1])
 		else:
 			print("Error: cannot find image directory", imageDirectory)
 			exit(1)

@@ -11,8 +11,8 @@ output_dir=$1
 temperature=$2
 plateID=$3
 
-bash transfer_imgs_1.sh ${plateID} ${output_dir} ${temperature}
-python bounding_box_overlay_2.py ${output_dir}
-python pregui_img_analysis_3.py ${output_dir} 
+bash transfer_imgs_1.sh "${plateID} ${output_dir} ${temperature}"
+python bounding_box_overlay_2.py "${output_dir}"
+python pregui_img_analysis_3.py "${output_dir}"
 
 
