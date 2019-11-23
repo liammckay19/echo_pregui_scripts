@@ -10,7 +10,7 @@ def organizeImages(imageDirectory):
 			newDirectory = imageDirectory+"/organizedWells"
 			try:
 				os.mkdir(newDirectory)
-			except FileExistsError:
+			except:
 				print(newDirectory, 'already exists. continuing')
 			for path in glob.glob(imageDirectory+"/batchID*/*/profileID_1/*.jpg"):
 				a = path.split("/")
