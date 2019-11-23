@@ -1,7 +1,8 @@
 # Echo_pregui_script 
 Usage: `bash run.sh [output directory name] [plate temperature: 4c/20c] [plate_id number] `
 
-SAMPLE OUTPUT
+#### SAMPLE OUTPUT
+
 `▶ bash run.sh output_test 20 10962`
 
 `xray@169.230.29.115's password: `
