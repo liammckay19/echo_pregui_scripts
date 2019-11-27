@@ -121,7 +121,7 @@ def main():
         print("File Error: temperature.txt not found. JSON will not have temperature defined")
         plate_temperature = "UNKNOWN"
 
-    plateKeys = ["date_time","temperature","plate_id"]
+    plateKeys = ["date_time","temperature","plate_id","wells"]
     wellKeys = ["subwell","image_path","well_id","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
 
     ### Create json output dictionary
@@ -151,18 +151,18 @@ def main():
         # print(cx_w,cy_w,radii_w,cx_d,cy_d,radii_d,cx_w,cy_w,radii_d,name,im_path,0,0,0)
 
         str_currentWell = "{0}_{1}".format(str_well_id, subwell)
-        a[plate_id][str_currentWell] = {key:0 for key in wellKeys}
-        a[plate_id][str_currentWell]["subwell"] = subwell
-        a[plate_id][str_currentWell]["image_path"] = os.path.abspath(im_path)
-        a[plate_id][str_currentWell]["well_id"] = str_well_id
-        a[plate_id][str_currentWell]["well_radius"] = int(radii_w)
-        a[plate_id][str_currentWell]["well_x"] = int(cx_w)
-        a[plate_id][str_currentWell]["well_y"] = int(cy_w)
-        a[plate_id][str_currentWell]["drop_radius"] = int(radii_d)
-        a[plate_id][str_currentWell]["drop_x"] = int(cx_d)
-        a[plate_id][str_currentWell]["drop_y"] = int(cy_d)
-        a[plate_id][str_currentWell]["offset_y"] = int(offset_y)
-        a[plate_id][str_currentWell]["offset_x"] = int(offset_x)
+        a[plate_id]["wells"][str_currentWell] = {key:0 for key in wellKeys}
+        a[plate_id]["wells"][str_currentWell]["subwell"] = subwell
+        a[plate_id]["wells"][str_currentWell]["image_path"] = os.path.abspath(im_path)
+        a[plate_id]["wells"][str_currentWell]["well_id"] = str_well_id
+        a[plate_id]["wells"][str_currentWell]["well_radius"] = int(radii_w)
+        a[plate_id]["wells"][str_currentWell]["well_x"] = int(cx_w)
+        a[plate_id]["wells"][str_currentWell]["well_y"] = int(cy_w)
+        a[plate_id]["wells"][str_currentWell]["drop_radius"] = int(radii_d)
+        a[plate_id]["wells"][str_currentWell]["drop_x"] = int(cx_d)
+        a[plate_id]["wells"][str_currentWell]["drop_y"] = int(cy_d)
+        a[plate_id]["wells"][str_currentWell]["offset_y"] = int(offset_y)
+        a[plate_id]["wells"][str_currentWell]["offset_x"] = int(offset_x)
 
     print(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json')
     with open(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json', 'w') as fp:

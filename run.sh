@@ -2,7 +2,7 @@
 ### Testing for the corect number of input arguments
 if [ ! $# -eq 3 ]; then
 		echo "Usage Error: incorrect number of arguments
-	sh run.sh [output_plate_folder] [plate_temperature 4c/20c] [plateID] "
+	bash run.sh [output_plate_folder] [plate_temperature 4c/20c] [plateID] "
 		exit 1
 fi
 output_dir=$1
