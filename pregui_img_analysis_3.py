@@ -131,6 +131,7 @@ def main():
     a[plate_id]["plate_id"] = plate_id
     a[plate_id]["date_time"] = datetime.now().isoformat(" ")
     a[plate_id]["temperature"] = plate_temperature
+    a[plate_id]["subwells"] = {}
     if plate_temperature == "UNKNOWN":
         print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
     print("Performing image analysis.")
