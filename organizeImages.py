@@ -13,7 +13,7 @@ def organizeImages(imageDirectory):
 			except:
 				print(newDirectory, 'already exists. continuing')
 			for path in glob.glob(imageDirectory+"/batchID*/*/profileID_1/*.jpg"):
-				a = path.split("/")
+				a = path.split("\\")
 				well_num = "".join([(a[x] if c==0 else '') for x,c in enumerate([s.find('well') for s in a])]) # just gets the wellNum_## folder name
 				if not os.path.exists(""+newDirectory+"/"+well_num):
 					os.mkdir(""+newDirectory+"/"+well_num)
@@ -26,4 +26,4 @@ def organizeImages(imageDirectory):
 		exit(1)
 
 if __name__ == "__main__":
-    main()
+	main()

@@ -140,7 +140,8 @@ def main():
     completedWells = 0
     for i in tqdm(range(1,97)):
       filepaths = sorted(glob.glob(imageDirectory+'/organizedWells/wellNum_'+str(i)+'/*')) # find all images 
-      subwell_list = [z.split("/d")[1].split("_")[0] for z in filepaths]
+      
+      subwell_list = [z.split("\\d")[1].split("_")[0] for z in filepaths]
       if len(filepaths) % 3 == 0:
         for j in range(0,len(filepaths),3):
           output_fh = imageDirectory+"/overlayed/well_"+str(i)+"_subwell"+subwell_list[0+j]+"_overlay.jpg"

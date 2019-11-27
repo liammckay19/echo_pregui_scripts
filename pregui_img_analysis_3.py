@@ -121,14 +121,15 @@ def main():
         print("File Error: temperature.txt not found. JSON will not have temperature defined")
         plate_temperature = "UNKNOWN"
 
-    plateKeys = ["date_time","temperature"]
-    wellKeys = ["image_path","well_id","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
+    plateKeys = ["date_time","temperature","plate_id"]
+    wellKeys = ["subwell","image_path","well_id","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
 
     ### Create json output dictionary
     a = {}
     a[plate_id] = {}
     a[plate_id] = {key:0 for key in plateKeys}
-    a[plate_id]["date_time"] = "Generated on: "+datetime.now().isoformat(" ")
+    a[plate_id]["plate_id"] = plate_id
+    a[plate_id]["date_time"] = datetime.now().isoformat(" ")
     a[plate_id]["temperature"] = plate_temperature
     if plate_temperature == "UNKNOWN":
         print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
@@ -151,7 +152,8 @@ def main():
 
         str_currentWell = "{0}_{1}".format(str_well_id, subwell)
         a[plate_id][str_currentWell] = {key:0 for key in wellKeys}
-        a[plate_id][str_currentWell]["image_path"] = im_path
+        a[plate_id][str_currentWell]["subwell"] = subwell
+        a[plate_id][str_currentWell]["image_path"] = os.path.abspath(im_path)
         a[plate_id][str_currentWell]["well_id"] = str_well_id
         a[plate_id][str_currentWell]["well_radius"] = int(radii_w)
         a[plate_id][str_currentWell]["well_x"] = int(cx_w)
