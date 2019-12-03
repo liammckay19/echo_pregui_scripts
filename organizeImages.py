@@ -6,7 +6,7 @@ import sys
 def organizeImages(imageDirectory):
 	print("organizing images.")
 	try:
-		if os.path.exists("./"+imageDirectory):
+		if os.path.exists("./"+imageDirectory): # makes new image directory if it isnt there already
 			newDirectory = imageDirectory+"/organizedWells"
 			try:
 				os.mkdir(newDirectory)
@@ -17,7 +17,7 @@ def organizeImages(imageDirectory):
 				well_num = "".join([(a[x] if c==0 else '') for x,c in enumerate([s.find('well') for s in a])]) # just gets the wellNum_## folder name
 				if not os.path.exists(""+newDirectory+"/"+well_num):
 					os.mkdir(""+newDirectory+"/"+well_num)
-				os.system("cp " + path + " " + ""+newDirectory+"/"+well_num+"/"+a[-1])
+				os.system("cp " + path + " " + ""+newDirectory+"/"+well_num+"/"+a[-1]) # copy files into an organized directory
 		else:
 			print("Error: cannot find image directory", imageDirectory)
 			exit(1)

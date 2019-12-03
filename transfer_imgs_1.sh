@@ -1,8 +1,10 @@
+# THE ARGUMENT ORDER IS DIFFERENT BETWEEN run.sh and this code
+
 ### Testing for the corect number of input arguments
 ### 	expecting 1 arugment for PlateID
 if [ ! $# -eq 3 ];then
 	echo "Usage Error: incorrect number of arguments
-sh transfer_imgs.sh [plateID] [output_plate_folder] [plate_temperature 4c/20c]"
+sh transfer_imgs.sh [plateID] [output_plate_folder] [plate_temperature 4c/20c]"  # THE ARGUMENT ORDER IS DIFFERENT BETWEEN run.sh and this code
 	exit 1
 fi
 
@@ -10,7 +12,7 @@ fi
 plateID=$1
 output_dir=$2
 temperature=$3
-NAS_IP_ADDRESS="169.230.29.115"
+NAS_IP_ADDRESS="169.230.29.115"  # works as of 12/3/2019 after getting a static IP address.
 
 ### Make output directory
 mkdir -p "${output_dir}/overlay"
