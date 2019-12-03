@@ -10,12 +10,13 @@ fi
 plateID=$1
 output_dir=$2
 temperature=$3
+NAS_IP_ADDRESS="169.230.29.115"
 
 ### Make output directory
 mkdir -p "${output_dir}/overlay"
 
 ### Run rsync to grab all non-thumbnail image paths and store in file
-rsync -nmav --rsync-path "/bin/rsync" --include "*/" --exclude "*_th.jpg" --include "*.jpg" xray@169.230.29.115:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}/" ${output_dir}/ > ${output_dir}/log_rsync_init_file_list.txt
+rsync -nmav --rsync-path "/bin/rsync" --include "*/" --exclude "*_th.jpg" --include "*.jpg" xray@${NAS_IP_ADDRESS}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}/" ${output_dir}/ > ${output_dir}/log_rsync_init_file_list.txt
 
 ### grab first and last batch IDs from rsync path list
 batchID_overview=`grep ".jpg" ${output_dir}/log_rsync_init_file_list.txt | awk -F "batchID_|/wellNum" '{print $2}' | sort | uniq | head -n 1`
@@ -36,4 +37,4 @@ echo ${temperature} > ${output_dir}/temperature.txt
 
 ### transfer files using rsync
 echo "After entering password, should only take ~30 sec to download all images on UCSFwpa"
-rsync --progress -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@169.230.29.115:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
+rsync --progress -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@${NAS_IP_ADDRESS}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
