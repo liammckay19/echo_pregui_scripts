@@ -18,13 +18,13 @@ NAS_IP_ADDRESS="169.230.29.115"  # works as of 12/3/2019 after getting a static 
 mkdir -p "${output_dir}/overlay"
 
 ### Run rsync to grab all non-thumbnail image paths and store in file
-rsync -nmav --rsync-path "/bin/rsync" --include "*/" --exclude "*_th.jpg" --include "*.jpg" xray@${NAS_IP_ADDRESS}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}/" ${output_dir}/ > ${output_dir}/log_rsync_init_file_list.txt
+rsync -e 'ssh -o StrictHostKeyChecking=no' -nmav --rsync-path "/bin/rsync" --include "*/" --exclude "*_th.jpg" --include "*.jpg" xray@${NAS_IP_ADDRESS}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}/" ${output_dir}/ | tee ${output_dir}/log_rsync_init_file_list.txt
 
 ### grab first and last batch IDs from rsync path list
 batchID_overview=`grep ".jpg" ${output_dir}/log_rsync_init_file_list.txt | awk -F "batchID_|/wellNum" '{print $2}' | sort | uniq | head -n 1`
 batchID_drop=`grep ".jpg" ${output_dir}/log_rsync_init_file_list.txt | awk -F "batchID_|/wellNum" '{print $2}' | sort | uniq | tail -n 1`
 
-echo "selected IDs: ${batchID_drop} ${batchID_overview}"
+echo "associated batchIDs on NAS Server: ${batchID_drop} ${batchID_overview}"
 
 ### Create a list of files to transfer in a text file for rsync to transfer using the --files-from option
 ###   first cat:  add drop images to file list
@@ -38,5 +38,5 @@ echo ${plateID} > ${output_dir}/plateid.txt
 echo ${temperature} > ${output_dir}/temperature.txt
 
 ### transfer files using rsync
-echo "After entering password, should only take ~30 sec to download all images on UCSFwpa"
-rsync --progress -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@${NAS_IP_ADDRESS}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
+echo "Should print files being downloaded after entering password below."
+rsync -e 'ssh -o StrictHostKeyChecking=no' -P -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@${NAS_IP_ADDRESS}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ | tee ${output_dir}/log_rsync_transferred.txt

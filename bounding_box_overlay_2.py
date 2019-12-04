@@ -135,7 +135,6 @@ def main():
     oI.organizeImages(imageDirectory)
     if not os.path.exists(imageDirectory+"/overlayed"):
       os.mkdir(imageDirectory+"/overlayed")
-    print("overlaying images.")
     print()
     completedWells = 0
     for i in tqdm(range(1,97)):
