@@ -3,6 +3,9 @@ import os
 import sys
 import json
 
+# after JSONs are made individually for each plate, 
+# create master large JSON in "original_output_directory/plate_analysis.json"
+
 def main():
     if sys.argv[1]:
         parentDirectory = sys.argv[1]
