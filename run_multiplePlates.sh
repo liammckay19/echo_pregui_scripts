@@ -12,7 +12,7 @@ if [ "$#" -ne 3 ]; then
 	for plateID in ${plateIDs[@]}
 	do
 		echo "${plateID}"
-		bash transfer_imgs_1.sh ${plateID} ${output_dir}/${plateID} ${temperature} 169.230.2.145
+		bash transfer_imgs_1.sh ${plateID} ${output_dir}/${plateID} ${temperature} 169.230.29.134
 		python bounding_box_overlay_2.py ${output_dir}/${plateID}
 		python pregui_img_analysis_3.py ${output_dir}/${plateID}
 	done
@@ -26,7 +26,7 @@ else
 	temperature=$2
 	plateID=$3
 
-	bash transfer_imgs_1.sh ${plateID} ${output_dir} ${temperature} 169.230.2.145
+	bash transfer_imgs_1.sh ${plateID} ${output_dir} ${temperature} 169.230.29.134
 	python bounding_box_overlay_2.py ${output_dir}
 	python pregui_img_analysis_3.py ${output_dir} 
 

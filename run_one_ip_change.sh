@@ -9,7 +9,7 @@ output_dir=$1
 temperature=$2
 plateID=$3
 
-bash transfer_imgs_1.sh ${plateID} ${output_dir} ${temperature} 169.230.2.145
+bash transfer_imgs_1.sh ${plateID} ${output_dir} ${temperature} 169.230.29.134
 python bounding_box_overlay_2.py ${output_dir}
 python pregui_img_analysis_3.py ${output_dir} 
 

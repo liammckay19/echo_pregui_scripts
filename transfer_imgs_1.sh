@@ -37,4 +37,4 @@ echo ${temperature} > ${output_dir}/temperature.txt
 
 ### transfer files using rsync
 echo "After entering password, should only take ~30 sec to download all images on UCSFwpa"
-rsync --progress -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@169.230.29.115:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
+rsync --progress -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@${rock_drive_ip}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
