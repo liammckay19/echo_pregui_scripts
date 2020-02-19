@@ -133,10 +133,9 @@ def main():
     print("Error: cannot find directory "+imageDirectory)
   else:
     oI.organizeImages(imageDirectory)
-    if not os.path.exists(imageDirectory+"/overlayed"):
-      os.mkdir(imageDirectory+"/overlayed")
-    print("overlaying images.")
-    print()
+    if not os.path.exists(os.path.join(imageDirectory,"overlayed")):
+      os.mkdir(os.path.join(imageDirectory,"overlayed"))
+    print("overlaying images.\n")
     completedWells = 0
 
     # generate wells a01-h12
@@ -147,11 +146,11 @@ def main():
     [[wellflat.append(wells[i][j]) for j in range(len(wells[i]))] for i in range(len(wells))]
 
     for i in tqdm(range(1,97)):
-      filepaths = sorted(glob.glob(imageDirectory+'/organizedWells/wellNum_'+str(i)+'/*')) # find all images 
+      filepaths = sorted(glob.glob(os.path.join(imageDirectory,'organizedWells','wellNum_'+str(i),'*'))) # find all images 
       subwell_list = [z.split("/d")[1].split("_")[0] for z in filepaths]
       if len(filepaths) % 3 == 0:
         for j in range(0,len(filepaths),3):
-          output_fh = imageDirectory+"/overlayed/well_"+str(i)+"_subwell"+subwell_list[0+j]+"_overlay.jpg"
+          output_fh = os.path.join(imageDirectory,"overlayed","well_"+str(i)+"_subwell"+subwell_list[0+j]+"_overlay.jpg")
           zoom_ef_fh=filepaths[0+j]
           dl_fh=filepaths[1+j]
           ef_fh=filepaths[2+j]

@@ -92,7 +92,9 @@ def main():
     current_directory = os.getcwd()
     plate_dir = sys.argv[1]
 
-    image_list=glob.glob("{}/overlayed/*".format(plate_dir))
+
+    image_list=glob.glob(os.path.join(current_directory,plate_dir,"overlayed","*"))
+    print(os.path.join(current_directory,plate_dir,"overlayed","*"))
     image_list.sort(key=lambda x: (int(x.split('well_')[1].split('_overlay')[0].split("_subwell")[0])))
 
     dict_image_path_subwells = {}
@@ -103,21 +105,19 @@ def main():
         well_subwell = well+"_"+subwell
         dict_image_path_subwells[well_subwell] = p
 
-    print(current_directory + '/' + plate_dir.strip('/') + '_offsets.csv') ### eventually do this in the main gui
-
     # Try to find the plateid.txt file
     try:
-        with open(current_directory+"/"+plate_dir+"/plateid.txt", 'r') as plate_id_file:
+        with open(os.path.join(current_directory,plate_dir,"plateid.txt"), 'r') as plate_id_file:
             plate_id = int(plate_id_file.read().rstrip())
-    except FileNotFoundError:
+    except:
         print("File Error: plateid.txt not found. JSON will not have plate_id key")
         plate_id = "UNKNOWN_ID_at_"+plate_dir
     
 
     try:
-        with open(current_directory+"/"+plate_dir+"/temperature.txt", 'r') as plate_id_file:
+        with open(os.path.join(current_directory,plate_dir,"temperature.txt"), 'r') as plate_id_file:
             plate_temperature = plate_id_file.read().rstrip()
-    except FileNotFoundError:
+    except:
         print("File Error: temperature.txt not found. JSON will not have temperature defined")
         plate_temperature = "UNKNOWN"
 
@@ -134,10 +134,10 @@ def main():
     a[plate_id]["subwells"] = {}    
     if plate_temperature == "UNKNOWN":
         print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
-    print("Performing image analysis.")
+    print("Finding pixel location of wells.")
     for im_idx, im_path in tqdm(sorted(dict_image_path_subwells.items())):
         if im_path:
-            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function also saves
+            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function for 4c or 20c temp
         # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
@@ -168,14 +168,12 @@ def main():
         a[plate_id]["subwells"][str_currentWell]["offset_x"] = int(offset_x)
         a[plate_id]["subwells"][str_currentWell]["subwell"] = int(subwell)
 
-    print(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json')
-    with open(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json', 'w') as fp:
+    print("created:", os.path.join(current_directory,plate_dir,plate_dir.replace(os.path.join("a","").replace("a",""),'')) + '.json')
+    with open(os.path.join(current_directory,plate_dir,plate_dir.replace(os.path.join("a","").replace("a",""),'')) + '.json', 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
 
     print("time to run: %s minutes"%str(int(ti.time()-t0)/60))
-
-    # for 
 
 
 if __name__ == "__main__":
