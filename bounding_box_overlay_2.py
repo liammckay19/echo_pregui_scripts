@@ -138,6 +138,14 @@ def main():
     print("overlaying images.")
     print()
     completedWells = 0
+
+    # generate wells a01-h12
+    letters=list('abcdefgh'.upper())
+    numbers = ["{:02d}".format(n) for n in range(1,13)]
+    wells =[[c+n for n in numbers] for c in letters]
+    wellflat=[]
+    [[wellflat.append(wells[i][j]) for j in range(len(wells[i]))] for i in range(len(wells))]
+
     for i in tqdm(range(1,97)):
       filepaths = sorted(glob.glob(imageDirectory+'/organizedWells/wellNum_'+str(i)+'/*')) # find all images 
       subwell_list = [z.split("/d")[1].split("_")[0] for z in filepaths]

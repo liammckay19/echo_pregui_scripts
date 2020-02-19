@@ -88,7 +88,7 @@ def main():
         print('Usage: python pregui_analysis.py [plate_dir]')
         print('Aborting script')
         sys.exit()
-    
+
     current_directory = os.getcwd()
     plate_dir = sys.argv[1]
 
@@ -104,7 +104,7 @@ def main():
         dict_image_path_subwells[well_subwell] = p
 
     print(current_directory + '/' + plate_dir.strip('/') + '_offsets.csv') ### eventually do this in the main gui
-    
+
     # Try to find the plateid.txt file
     try:
         with open(current_directory+"/"+plate_dir+"/plateid.txt", 'r') as plate_id_file:
@@ -128,8 +128,10 @@ def main():
     a = {}
     a[plate_id] = {}
     a[plate_id] = {key:0 for key in plateKeys}
-    a[plate_id]["date_time"] = "Generated on: "+datetime.now().isoformat(" ")
+    a[plate_id]["plate_id"] = plate_id
+    a[plate_id]["date_time"] = datetime.now().isoformat(" ")
     a[plate_id]["temperature"] = plate_temperature
+    a[plate_id]["subwells"] = {}    
     if plate_temperature == "UNKNOWN":
         print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
     print("Performing image analysis.")
@@ -147,20 +149,24 @@ def main():
 
         str_well_id = Plate.well_names[int(well)-1]
 
+        letter_number_new_image_path = im_path.split('well')[0]+str_well_id+"_"+subwell+".jpg"
+        os.rename(im_path,letter_number_new_image_path)
+
         # print(cx_w,cy_w,radii_w,cx_d,cy_d,radii_d,cx_w,cy_w,radii_d,name,im_path,0,0,0)
 
         str_currentWell = "{0}_{1}".format(str_well_id, subwell)
-        a[plate_id][str_currentWell] = {key:0 for key in wellKeys}
-        a[plate_id][str_currentWell]["image_path"] = im_path
-        a[plate_id][str_currentWell]["well_id"] = str_well_id
-        a[plate_id][str_currentWell]["well_radius"] = int(radii_w)
-        a[plate_id][str_currentWell]["well_x"] = int(cx_w)
-        a[plate_id][str_currentWell]["well_y"] = int(cy_w)
-        a[plate_id][str_currentWell]["drop_radius"] = int(radii_d)
-        a[plate_id][str_currentWell]["drop_x"] = int(cx_d)
-        a[plate_id][str_currentWell]["drop_y"] = int(cy_d)
-        a[plate_id][str_currentWell]["offset_y"] = int(offset_y)
-        a[plate_id][str_currentWell]["offset_x"] = int(offset_x)
+        a[plate_id]["subwells"][str_currentWell] = {key:0 for key in wellKeys}
+        a[plate_id]["subwells"][str_currentWell]["image_path"] = letter_number_new_image_path
+        a[plate_id]["subwells"][str_currentWell]["well_id"] = str_well_id
+        a[plate_id]["subwells"][str_currentWell]["well_radius"] = int(radii_w)
+        a[plate_id]["subwells"][str_currentWell]["well_x"] = int(cx_w)
+        a[plate_id]["subwells"][str_currentWell]["well_y"] = int(cy_w)
+        a[plate_id]["subwells"][str_currentWell]["drop_radius"] = int(radii_d)
+        a[plate_id]["subwells"][str_currentWell]["drop_x"] = int(cx_d)
+        a[plate_id]["subwells"][str_currentWell]["drop_y"] = int(cy_d)
+        a[plate_id]["subwells"][str_currentWell]["offset_y"] = int(offset_y)
+        a[plate_id]["subwells"][str_currentWell]["offset_x"] = int(offset_x)
+        a[plate_id]["subwells"][str_currentWell]["subwell"] = int(subwell)
 
     print(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json')
     with open(current_directory + '/' + plate_dir + '/' +plate_dir.replace('/','') + '.json', 'w') as fp:
@@ -168,6 +174,8 @@ def main():
     print('wrote to json')
 
     print("time to run: %s minutes"%str(int(ti.time()-t0)/60))
+
+    # for 
 
 
 if __name__ == "__main__":
