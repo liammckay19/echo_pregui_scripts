@@ -145,6 +145,7 @@ def main():
         ### plan on keeping the drop information
         offset_x = cx_d - cx_w
         offset_y = cy_w - cy_d
+        print(im_idx)
         well,subwell = im_idx.split("_")
 
         str_well_id = Plate.well_names[int(well)-1]
