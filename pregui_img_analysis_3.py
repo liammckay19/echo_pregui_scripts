@@ -93,8 +93,7 @@ def main():
     plate_dir = sys.argv[1]
 
 
-    image_list=glob.glob(os.path.join(current_directory,plate_dir,"overlayed","*"))
-    print(os.path.join(current_directory,plate_dir,"overlayed","*"))
+    image_list=glob.glob(os.path.join(current_directory,plate_dir.replace("/",""),"overlayed","*"))
     image_list.sort(key=lambda x: (int(x.split('well_')[1].split('_overlay')[0].split("_subwell")[0])))
 
     dict_image_path_subwells = {}
@@ -136,9 +135,9 @@ def main():
         print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
     print("Finding pixel location of wells.")
     for im_idx, im_path in tqdm(sorted(dict_image_path_subwells.items())):
-        if im_path:
-            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function for 4c or 20c temp
-        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
+        # if im_path:
+        #     cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function for 4c or 20c temp
+        cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
         ### everything _d is for the drop
@@ -169,8 +168,11 @@ def main():
         a[plate_id]["subwells"][str_currentWell]["offset_x"] = int(offset_x)
         a[plate_id]["subwells"][str_currentWell]["subwell"] = int(subwell)
 
-    print("created:", os.path.join(current_directory,plate_dir,plate_dir.replace(os.path.join("a","").replace("a",""),'')) + '.json')
-    with open(os.path.join(current_directory,plate_dir,plate_dir.replace(os.path.join("a","").replace("a",""),'')) + '.json', 'w') as fp:
+    # print("created:", os.path.join(current_directory,plate_dir,plate_dir.replace(os.path.join("a","").replace("a",""),'')) + '.json')
+
+    json_file_name = os.path.join(current_directory,plate_dir,plate_dir.replace("/","").replace("\\\\","") + '.json')
+    print(json_file_name)
+    with open(json_file_name, 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
 

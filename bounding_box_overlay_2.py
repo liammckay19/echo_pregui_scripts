@@ -132,7 +132,7 @@ def main():
   if not os.path.exists(imageDirectory): # case 2: directory doesn't exist
     print("Error: cannot find directory "+imageDirectory)
   else:
-    oI.organizeImages(imageDirectory)
+    oI.organizeImages(imageDirectory) # IMPORTANT FOR RUNTIME
     if not os.path.exists(os.path.join(imageDirectory,"overlayed")):
       os.mkdir(os.path.join(imageDirectory,"overlayed"))
     print("overlaying images.\n")
@@ -145,9 +145,12 @@ def main():
     wellflat=[]
     [[wellflat.append(wells[i][j]) for j in range(len(wells[i]))] for i in range(len(wells))]
 
-    for i in tqdm(range(1,97)):
-      filepaths = sorted(glob.glob(os.path.join(imageDirectory,'organizedWells','wellNum_'+str(i),'*'))) # find all images 
-      subwell_list = [z.split(os.path.join("","d"))[1].split("_")[0] for z in filepaths]
+
+    for i in tqdm(range(1,97)): # loop through 96 images
+
+      filepaths = sorted(glob.glob(os.path.join(imageDirectory,'organizedWells','wellNum_'+str(i),'*'))) # find all images in this well 
+      subwell_list = [z.split(os.path.join(" ","d").strip())[1].split("_")[0] for z in filepaths] # getting all subwells from rockimager file name
+
       if len(filepaths) % 3 == 0:
         for j in range(0,len(filepaths),3):
           output_fh = os.path.join(imageDirectory,"overlayed","well_"+str(i)+"_subwell"+subwell_list[0+j]+"_overlay.jpg")
@@ -155,7 +158,7 @@ def main():
           dl_fh=filepaths[1+j]
           ef_fh=filepaths[2+j]
           try:
-            overlayed_img = overlay_images(dl_fh,ef_fh,zoom_ef_fh,output_fh)
+            overlayed_img = overlay_images(dl_fh,ef_fh,zoom_ef_fh,output_fh) # IMPORTANT FOR RUNTIME
             completedWells += 1
           except TypeError:
             print("\nwellNum_"+str(i)+' Overlay Error: Could not get bounding box from box_open.getbbox(). Image wasn\'t loaded')
