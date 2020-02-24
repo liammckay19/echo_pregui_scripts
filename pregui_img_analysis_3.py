@@ -135,16 +135,15 @@ def main():
         print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
     print("Finding pixel location of wells.")
     for im_idx, im_path in tqdm(sorted(dict_image_path_subwells.items())):
-        # if im_path:
-        #     cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function for 4c or 20c temp
-        cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
+        if im_path:
+            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function for 4c or 20c temp
+        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
         ### everything _d is for the drop
         ### plan on keeping the drop information
         offset_x = cx_d - cx_w
         offset_y = cy_w - cy_d
-        print(im_idx)
         well,subwell = im_idx.split("_")
 
         str_well_id = Plate.well_names[int(well)-1]
