@@ -1,5 +1,9 @@
-# Echo_pregui_script 
-Usage: `bash run.sh [output directory name] [plate temperature: 4c/20c] [plate_id number] `
+# Echo pregui scripts 
+Usage (windows): `run.sh [output directory name] [plate temperature: 4 or 20] [plate_id number] `
+Usage (linux/unix): `bash run.sh [output directory name] [plate temperature: 4 or 20] [plate_id number] `
+
+Multiple plates (windows): `run.sh [output directory name] [plate temperature: 4 or 20] [plate_id number] <plate_id number(s)...> `
+Multiple plates (linux/unix): `bash run.sh [output directory name] [plate temperature: 4 or 20] [plate_id number] <plate_id number(s)...>  `
 
 #### SAMPLE OUTPUT
 
