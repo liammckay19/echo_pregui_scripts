@@ -21,6 +21,7 @@ from datetime import datetime, date, time
 import time as ti
 import json
 from tqdm import tqdm
+import cv2
 
 #Function Definitions
 #Params
@@ -66,16 +67,60 @@ def draw_circles_on_image_center(image,cx,cy,radii,colour,dotsize):
         image[circy,circx] = colour
         image[cy[0]-dotsize:cy[0]+dotsize,cx[0]-dotsize:cx[0]+dotsize] = colour
 
-def save_canny_save_fit(path,sig,low,high,temp): #sig=3,low = 0, high = 30
+def save_canny_save_fit(path, temp): #sig=3,low = 0, high = 30
+    # circles=[]
+    # zstack = io.imread(overlayed_image[i])
+    # output = img_as_ubyte(zstack[:, :, 0]).copy()
+    # edged = image.copy()
+    # # ret, thresh = cv2.threshold(image, thresh1_binary, thresh2_binary, cv2.THRESH_BINARY)
+    # print("bw:",thresh1_binary, thresh2_binary)
+    # edged = cv2.Canny(thresh, thresh1_canny, thresh2_canny)
+    # print("edged:",thresh1_canny, thresh2_canny)
+    # circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=400, minRadius=475, maxRadius=495)
+    # if circles is not None:
+    #     found_circles += 1
+    #     # convert the (x, y) coordinates and radius of the circles to integers
+    #     circles = np.round(circles[0, :]).astype("int")
+    #     # loop over the (x, y) coordinates and radius of the circles
+    #     for (x, y, r) in circles:
+    #         # draw the circle in the output image, then draw a rectangle
+    #         # corresponding to the center of the circle
+    #         cv2.circle(output, (x, y), r, (255, 0, 0), 4)
+    #         cv2.rectangle(output, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+
+    accum_d, cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0,0] # initialize variables
+
     zstack = io.imread(path)  
     image = img_as_ubyte(zstack[:,:,0]) # finds the top x-y pixels in the z-stack
-    edges = canny(image,sigma=sig,low_threshold=low,high_threshold=high)   # edge detection
-    accum_d, cx_d, cy_d, radii_d = circular_hough_transform(135,145,2,edges,1) #edge detection on drop, params: r1,r2,stepsize,image,peaknum. Key params to change are r1&r2 for start & end radius
-    
+
+    _, thresh = cv2.threshold(image, 38, 179, cv2.THRESH_TOZERO_INV) # tested march 17 2020 on plate 10818
+    _, thresh = cv2.threshold(thresh, 0, 255, cv2.THRESH_BINARY) # tested march 17 2020 on plate 10818
+
+    edged = cv2.Canny(thresh, 101, 112)
+    drop_circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=600, minRadius=135, maxRadius=145)
+
+    if drop_circles is not None:
+        drop_circles = np.round(drop_circles[0, :]).astype("int")
+        cx_d, cy_d, radii_d = drop_circles[0]  # always take first circle found
+
+    cv2.imshow('drop_img', edged)
+
     if temp == '20C': ### This works well for echo RT plate type for rockmaker
-        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(479,495,1,edges,1) #edge detection on well. Units for both are in pixels
+        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=600, minRadius=475, maxRadius=495)
     else: ### This works well for echo 4C plate type for rockmaker
-        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(459,475,1,edges,1) #edge detection on well. Units for both are in pixels
+        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=600, minRadius=459, maxRadius=475)
+
+    if circles is not None:
+        circles = np.round(circles[0, :]).astype("int")
+        cx_w, cy_w, radii_w = circles[0]  # always take first circle found
+
+
+    #
+    # # edges = canny(image,sigma=sig,low_threshold=low,high_threshold=high)   # edge detection
+    # if temp == '20C': ### This works well for echo RT plate type for rockmaker
+    #     accum_w, cx_w, cy_w, radii_w = circular_hough_transform(479,495,1,edges,1) #edge detection on well. Units for both are in pixels
+    # else: ### This works well for echo 4C plate type for rockmaker
+    #     accum_w, cx_w, cy_w, radii_w = circular_hough_transform(459,475,1,edges,1) #edge detection on well. Units for both are in pixels
 
     return cx_d,cy_d,radii_d, cx_w, cy_w, radii_w
 
@@ -137,7 +182,7 @@ def main():
     print("Finding pixel location of wells.")
     for im_idx, im_path in tqdm(sorted(dict_image_path_subwells.items())):
         if im_path:
-            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function for 4c or 20c temp
+            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path, plate_temperature) ### calling this function for 4c or 20c temp
         # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
         ### radii radius of the drop circle 
         ### everything _w is for the well
