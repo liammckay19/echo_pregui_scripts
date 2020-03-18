@@ -55,14 +55,14 @@ def main():
     print("batch IDs selected: ", *batches)
 
     # ### Create a list of files to transfer in a text file for rsync to transfer using the --files-from option
-    # ###   first cat:  add drop images to file list
-    # ###   second cat: add overview drop location files to file list
-    # ###   third cat:  add overview extended focus images to file list
-    # #cat log_rsync_init_file_list.txt | grep "${batchID_drop}\|${batchID_overview}" | grep ".jpg" > files_to_transfer.txt
 
     # get unique image names
     # Tries to grab all the images in the same batch first, because doing two batches is two different batches of images
-    # i think batch id are different times taking the pictures so if you try to match a extended focus to a drop image from two different imaging times(aka batches) it will not match exactly and could be the problem with the well not matching
+    """ 
+    i think batch id are different times taking the pictures so if you try to match a extended focus to a drop 
+    image from two different imaging times(aka batches) it will not match exactly and could be the problem with 
+    the well not matching
+    """
     image_names = set()
     path_names_only_necessary = list()
     for line in rsync_out.split('\n'):
@@ -95,26 +95,16 @@ def main():
             files_to_transfer.write(path + "\n")
 
     rsync_download = [
-        "rsync", "--files-from=" + output_dir + "/files_to_transfer.txt", "-e", "ssh",
-                 "xray@" + rock_drive_ip + ":" + join("/volume1",
-                                                      "RockMakerStorage",
-                                                      "WellImages",
-                                                      str(plateID)[2:],
-                                                      'plateID_' + str(plateID)),
-        join(str(output_dir), "")]
-    # print(*rsync_download)
-    # print(path)
-    with tqdm(total=len(glob(join(output_dir,"batchID_*","wellNum_*","profileID_*","*")))):
-        subprocess.run(rsync_download)
+        "rsync", "--info=progress2", "--files-from=" + output_dir + "/files_to_transfer.txt", "-e", "ssh",
+                                     "xray@" + rock_drive_ip + ":" + join("/volume1",
+                                                                          "RockMakerStorage",
+                                                                          "WellImages",
+                                                                          str(plateID)[2:],
+                                                                          'plateID_' + str(plateID)),
+        join(str(output_dir), "")
+    ]
+    print(*rsync_download)
+    subprocess.run(rsync_download)
 
-
-# ","cat ${output_dir}/log_rsync_init_file_list.txt | grep "${batchID_overview}" | grep "dl.jpg" >> ${output_dir}/files_to_transfer.txt
-# cat ${output_dir}/log_rsync_init_file_list.txt | grep "${batchID_overview}" | grep "dl.jpg" | sed 's/dl/ef/' >> ${output_dir}/files_to_transfer.txt
-# echo ${plateID} > ${output_dir}/plateid.txt
-# echo ${temperature} > ${output_dir}/temperature.txt
-
-# ### transfer files using rsync
-# echo "2nd password prompt will appear below, should only take ~30 sec to download all images on UCSFwpa"
-# rsync --progress -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@${rock_drive_ip}:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
 
 main()
