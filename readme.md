@@ -1,5 +1,22 @@
 # Echo_pregui_script 
-Usage: `bash run.sh [output directory name] [plate temperature: 4c/20c] [plate_id number] `
+`usage: echo_pregui_run.py [-h] -ids PLATEID [PLATEID ...] -dir
+                          OUTPUT_PLATE_FOLDER -temp PLATE_TEMP`
+                          
+                          
+## Help:
+  - `-h, --help`            
+  
+            show this help message and exit
+  - `-ids PLATEID [PLATEID ...], --plateID PLATEID [PLATEID ...]`
+            
+            RockMaker Plate ID (4 or 5 digit code on barcode or
+            2nd number on RockMaker screen experiment file
+  - `-dir OUTPUT_PLATE_FOLDER, --output_plate_folder OUTPUT_PLATE_FOLDER`
+                        
+            Output folder for images and json
+  - `-temp PLATE_TEMP, --plate_temp PLATE_TEMP`
+                       
+            Temperature of plate where it is stored at
 
 #### SAMPLE OUTPUT
 

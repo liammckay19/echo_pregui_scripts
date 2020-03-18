@@ -106,5 +106,5 @@ def main():
     print(*rsync_download)
     subprocess.run(rsync_download)
 
-
-main()
+if __name__ == '__main__':
+    main()
