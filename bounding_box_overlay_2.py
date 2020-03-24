@@ -1,3 +1,5 @@
+import subprocess
+
 from PIL import Image as Im
 import numpy as np
 import time, sys
@@ -122,29 +124,16 @@ def align_drop_to_box(over_ef, drop_fh, box):
     # overview_open.show()
     return overview_open
 
-
-def main():
-    ### save the time to later see how long script took
-    t0 = time.time()
-    # save usage to a string to save space
-    usage = "Usage: python bounding_box_overlay.py [parent image directory]"
-    imageDirectory=''
-    try:  # case 1: catches if there is no argv 1
-        # not the greatest, but works
-        imageDirectory = sys.argv[1]
-    except IndexError:  # if there is, leave the program
-        print(usage)
-        exit(1)
+def run(imageDirectory):
     if not os.path.exists(imageDirectory):  # case 2: directory doesn't exist
         print("Error: cannot find directory " + imageDirectory)
     else:
-        oI.organizeImages(imageDirectory)
         if not os.path.exists(os.path.join(imageDirectory, "overlayed")):
             os.mkdir(os.path.join(imageDirectory, "overlayed"))
         print("overlaying images.\n")
         completedWells = 0
 
-        # generate wells a01-h12
+        # generate wells a01-h12 - only works on 96 well plates
         letters = list('abcdefgh'.upper())
         numbers = ["{:02d}".format(n) for n in range(1, 13)]
         wells = [[c + n for n in numbers] for c in letters]
@@ -162,6 +151,7 @@ def main():
                     zoom_ef_fh = filepaths[0 + j]
                     dl_fh = filepaths[1 + j]
                     ef_fh = filepaths[2 + j]
+                    subprocess.run(['cp', ef_fh, os.path.join(imageDirectory,"overview",ef_fh)])
                     try:
                         overlayed_img = overlay_images(dl_fh, ef_fh, zoom_ef_fh, output_fh)
                         completedWells += 1
@@ -178,8 +168,23 @@ def main():
         ### show how many wells have an overlay
         print("Completed images:", completedWells)
 
-        ### print the time it took to run the script
-        print("time to run: %s" % (time.time() - t0))
+
+def main():
+    ### save the time to later see how long script took
+    t0 = time.time()
+    # save usage to a string to save space
+    usage = "Usage: python bounding_box_overlay.py [parent image directory]"
+    imageDirectory=''
+    try:  # case 1: catches if there is no argv 1
+        # not the greatest, but works
+        imageDirectory = sys.argv[1]
+    except IndexError:  # if there is, leave the program
+        print(usage)
+        exit(1)
+
+    run(imageDirectory)
+    ### print the time it took to run the script
+    print("time to run: %s" % (time.time() - t0))
 
 
 if __name__ == "__main__":
