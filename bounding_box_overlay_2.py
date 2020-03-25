@@ -1,30 +1,113 @@
 import subprocess
 
+import imutils
 from PIL import Image as Im
 import numpy as np
 import time, sys
 import glob
 import os
+
+from cv2 import cv2
+
 import organizeImages as oI
 from tqdm import tqdm
+
+from Plate import Plate
+
+
+def save_overview_img(original_fp, imageDirectory):
+    plate = Plate(r=8, c=12, subwell_num=1)  # don't need to worry about subwell (that's specified in img path)
+
+    original_fp = os.path.abspath(original_fp)
+    fp = original_fp.split(os.path.sep)
+
+    well_num = "".join([(fp[x] if c == 0 else '') for x, c in
+                        enumerate([s.find('well') for s in fp])])  # just gets the wellNum_## folder name
+
+    subwell_number = fp[-1][1]
+
+    well_id = plate.get_number_to_well_id(int(well_num.split("_")[1])).split("_")[0]
+    new_fp = os.path.join(imageDirectory, "overview", well_id + "_" + subwell_number + ".jpg")
+
+    subprocess.run(["cp", original_fp, new_fp])
+    return well_id + "_" + subwell_number
 
 
 def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh):
     ### This is the main function of the script
 
     ### Get image with signal from red box in drop location image
-    box_im_open = red_box_subt(overview_dl_fh, 4)
-    # box_im_open.show()
+    # box_im_open = red_box_subt(overview_dl_fh, 4)
+    overview_dl = cv2.imread(overview_dl_fh)
+    zoom = cv2.imread(zoom_fh)
+    overview_ef = cv2.imread(overview_ef_fh)
 
-    ### Get the dimensions of the signal for the red box, by calculating the bounding box
-    box_dims = find_bounding_box(box_im_open, 4)
+    mask = cv2.inRange(overview_dl, np.array([0, 2, 57]), np.array([69, 92, 255]))
+    # all pixels in our image that have a R >= 100, B >= 15, and G >= 17 along with R <= 200, B <= 56, and G <= 50 will be considered red.
+    # https://www.pyimagesearch.com/2014/08/04/opencv-python-color-detection/
 
-    ### Overlay resized drop image onto the original overview image, using the bounding box dimensions
-    overlay_open = align_drop_to_box(overview_ef_fh, zoom_fh, box_dims)
+    output = cv2.bitwise_and(overview_dl, overview_dl, mask=mask)
+    _, output = cv2.threshold(output, 100, 255, cv2.THRESH_BINARY)
 
-    ### Save the overlayed image
-    overlay_open.save(output_fh, format="JPEG")
-    # return overlay_open
+    grey = cv2.cvtColor(output, cv2.COLOR_RGB2GRAY)
+    blurred = cv2.GaussianBlur(grey, (5, 5), 1)
+    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY)
+
+    cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL,
+                            cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    boundRect = [None] * len(cnts)
+
+    contours_poly = [None] * len(cnts)
+    # centers = [None] * len(cnts)
+    # radius = [None] * len(cnts)
+    biggest_area = 0
+    box_with_biggest_area = 0
+    for i, c in enumerate(cnts):
+        contours_poly[i] = cv2.approxPolyDP(c, 3, True)
+        boundRect[i] = cv2.boundingRect(contours_poly[i])
+        area = boundRect[i][2]*boundRect[i][3]
+        if area > biggest_area:
+            box_with_biggest_area = i
+            biggest_area = area
+
+        # centers[i], radius[i] = cv2.minEnclosingCircle(contours_poly[i])
+
+    # for cases with blue boxes on overview drop location, this messes up.
+    # 1. try to take last contour
+    # 2. take largest area of bounding box
+
+    # draw the contours
+    # c = c.astype("float")
+    # c = c.astype("int")
+    # cv2.drawContours(overview_dl, [c], -1, (0, 255, 0), 2)
+
+    # cv2.rectangle(overview_dl, (int(boundRect[i][0]), int(boundRect[i][1])),
+    #               (int(boundRect[i][0] + boundRect[i][2]), int(boundRect[i][1] + boundRect[i][3])), (255, 0, 0),
+    #               thickness=-1)
+
+    rows, cols, _ = zoom.shape
+    max_b = box_with_biggest_area
+
+    b_x, b_y, b_w, b_h = int(boundRect[max_b][0]), int(boundRect[max_b][1]), int(boundRect[max_b][2]), int(boundRect[max_b][3])
+
+    # width of box found = new x width for zoom picture
+    xscale = b_w
+    # height of box found = new y height for zoom picture
+    yscale = b_h
+
+    xscale = max(xscale,yscale)
+    yscale = max(xscale,yscale)
+
+    if (xscale, yscale) > (0, 0):
+        drop = cv2.resize(zoom, (xscale, yscale), interpolation=cv2.INTER_AREA)
+    else:
+        drop = cv2.resize(zoom, (cols//2, rows//2), interpolation=cv2.INTER_AREA)
+
+    if (drop.shape[0]+b_y,drop.shape[1]+b_x) <= (overview_ef.shape[0], overview_ef.shape[1]):
+        overview_ef[b_y:b_y + drop.shape[0], b_x:b_x + drop.shape[1]] = drop
+    cv2.imwrite(output_fh, overview_ef)
+    return overview_ef
 
 
 def red_box_subt(w_box_fh, scaling_factor):
@@ -124,6 +207,7 @@ def align_drop_to_box(over_ef, drop_fh, box):
     # overview_open.show()
     return overview_open
 
+
 def run(imageDirectory):
     if not os.path.exists(imageDirectory):  # case 2: directory doesn't exist
         print("Error: cannot find directory " + imageDirectory)
@@ -133,40 +217,44 @@ def run(imageDirectory):
         print("overlaying images.\n")
         completedWells = 0
 
-        # generate wells a01-h12 - only works on 96 well plates
-        letters = list('abcdefgh'.upper())
-        numbers = ["{:02d}".format(n) for n in range(1, 13)]
-        wells = [[c + n for n in numbers] for c in letters]
-        wellflat = []
-        [[wellflat.append(wells[i][j]) for j in range(len(wells[i]))] for i in range(len(wells))]
-
         for i in tqdm(range(1, 97)):
             filepaths = sorted(
                 glob.glob(os.path.join(imageDirectory, 'organizedWells', 'wellNum_' + str(i), '*')))  # find all images
-            subwell_list = [z.split("/d")[1].split("_")[0] for z in filepaths]
             if len(filepaths) % 3 == 0:
                 for j in range(0, len(filepaths), 3):
-                    output_fh = os.path.join(imageDirectory, "overlayed",
-                                             "well_" + str(i) + "_subwell" + subwell_list[0 + j] + "_overlay.jpg")
                     zoom_ef_fh = filepaths[0 + j]
                     dl_fh = filepaths[1 + j]
                     ef_fh = filepaths[2 + j]
-                    subprocess.run(['cp', ef_fh, os.path.join(imageDirectory,"overview",ef_fh)])
+
+                    # save overview image (no drop location box) to overview folder
+                    well_name = save_overview_img(ef_fh, imageDirectory)
+
+                    output_fp = os.path.join(imageDirectory, "overlayed", well_name + ".jpg")
                     try:
-                        overlayed_img = overlay_images(dl_fh, ef_fh, zoom_ef_fh, output_fh)
+                        overlayed_img = overlay_images(dl_fh, ef_fh, zoom_ef_fh, output_fp)
                         completedWells += 1
                     except TypeError:
-                        print("\nwellNum_" + str(
-                            i) + ' Overlay Error: Could not get bounding box from box_open.getbbox(). Image wasn\'t loaded')
+                        try:
+                            raise RuntimeWarning(
+                                "wellNum_%d" % i +
+                                'error with overlay: Could not get bounding box from box_open.getbbox(). Image wasn\'t loaded')
+                        except RuntimeWarning as e:
+                            print(e)
                     except OSError:
-                        print("\nwellNum_{0} File Error: Could not open image file".format(i))
+                        try:
+                            raise RuntimeWarning("wellNum_%d Could not open image file" % i)
+                        except RuntimeWarning as e:
+                            print(e)
 
             else:
-                print("\nwellNum_" + str(
-                    i) + " does not have the 3 required images for bounding box overlay. Continuing...")
+                try:
+                    raise RuntimeWarning("\nwellNum_" + str(
+                        i) + " does not have the 3 required images for bounding box overlay. Continuing...")
+                except RuntimeWarning as e:
+                    print(e)
 
         ### show how many wells have an overlay
-        print("Completed images:", completedWells)
+        print("Completed images (should be 96 for 96 well):", completedWells)
 
 
 def main():
@@ -174,7 +262,7 @@ def main():
     t0 = time.time()
     # save usage to a string to save space
     usage = "Usage: python bounding_box_overlay.py [parent image directory]"
-    imageDirectory=''
+    imageDirectory = ''
     try:  # case 1: catches if there is no argv 1
         # not the greatest, but works
         imageDirectory = sys.argv[1]

@@ -21,7 +21,8 @@ def rename_overview_images_well_id(imageDirectory):
         wellNum = int(path.split("wellNum_")[1].split(os.path.sep)[0])
         well_id, _ = p.get_number_to_well_id(wellNum).split("_")
         subprocess.run(
-            ["mv", path, os.path.join(imageDirectory, "overview", "wellNum_%d" % wellNum, well_id + "_" + subwell)])
+            ["mv", path,
+             os.path.join(imageDirectory, "overview", "wellNum_%d" % wellNum, well_id + "_" + subwell + ".jpg")])
 
 
 def organizeImages(imageDirectory):
@@ -48,14 +49,14 @@ def organizeImages(imageDirectory):
                 if not os.path.exists(os.path.join(newDirectory, well_num)):
                     os.mkdir(os.path.join(newDirectory, well_num))
                 os.system("cp " + path + " " + os.path.join(newDirectory, well_num, a[-1]))
-
-                if not os.path.exists(os.path.join(overview_img_dir, well_num)):
-                    os.mkdir(os.path.join(overview_img_dir, well_num))
-                if "ef.jpg" in path:
-                    well_id = p.get_number_to_well_id(int(well_num.split("_")[1])).split("_")[0]
-                    os.system("cp " + path + " " + os.path.join(overview_img_dir, well_num,
-                                                                well_id + "_" + a[-1][1] + ".jpg"))
-                    # overwrites the *ef.jpg copied, all files saved as well id - last img is saved
+                #
+                # if not os.path.exists(os.path.join(overview_img_dir, well_num)):
+                #     os.mkdir(os.path.join(overview_img_dir, well_num))
+                # if "ef.jpg" in path:
+                #     well_id = p.get_number_to_well_id(int(well_num.split("_")[1])).split("_")[0]
+                #     os.system("cp " + path + " " + os.path.join(overview_img_dir, well_num,
+                #                                                 well_id + "_" + a[-1][1] + ".jpg"))
+                #     # overwrites the *ef.jpg copied, all files saved as well id - last img is saved
 
         else:
             print("Error: cannot find image directory", imageDirectory)
