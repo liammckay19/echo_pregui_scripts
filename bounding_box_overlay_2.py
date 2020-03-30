@@ -395,7 +395,6 @@ def main():
     except IndexError:  # if there is, leave the program
         print(usage)
         exit(1)
-
     run(imageDirectory)
     ### print the time it took to run the script
     print("time to run: %s" % (time.time() - t0))

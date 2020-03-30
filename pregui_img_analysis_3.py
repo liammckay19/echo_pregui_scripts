@@ -119,6 +119,7 @@ def get_dict_image_to_well(plate_dir):
     return dict_image_path_subwells
 
 
+
 def createJson(plate_dir: str, plate_id: int, plate_temperature: int, dict_image_path_subwells: dict, debug=False) -> None:
     current_directory = os.getcwd()
 
@@ -181,10 +182,12 @@ def createJson(plate_dir: str, plate_id: int, plate_temperature: int, dict_image
         a[plate_id]["subwells"][str_currentWell]["offset_x"] = int(offset_x)
         a[plate_id]["subwells"][str_currentWell]["subwell"] = int(subwell)
 
+
     print("created:", os.path.join(current_directory, plate_dir,
                                    plate_dir.replace(os.path.join("a", "").replace("a", ""), '')) + '.json')
     with open(os.path.join(current_directory, plate_dir,
                            plate_dir.replace(os.path.join("a", "").replace("a", ""), '')) + '.json', 'w') as fp:
+
         json.dump(a, fp)
     print('wrote to json')
 
