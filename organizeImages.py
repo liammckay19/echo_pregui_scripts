@@ -8,8 +8,6 @@ from Plate import Plate
 
 
 def rename_overview_images_well_id(imageDirectory):
-    # prereq: have run delete drop images first
-
     image_path_list = sorted(glob.glob(os.path.join(imageDirectory, "overview", "*", "*")), key=lambda x: x[-18:])
 
     # if (len(image_path_list)) % 96 == 0:  # if divisible by 96, make a 96 well plate

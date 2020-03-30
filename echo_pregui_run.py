@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from transfer_imgs_1 import run as transfer_imgs
 from bounding_box_overlay_2 import run as bounding_box_overlay
@@ -13,6 +14,14 @@ def argparse_reader_main():
     parser.add_argument('-dir', '--output_plate_folder', type=str, help='Output folder for images and json',
                         required=True)
     parser.add_argument('-temp', '--plate_temp', type=int, help='Temperature of plate stored at', required=True)
+    parser.add_argument('-box', '--box_overlay', action='store_true', default=True,
+                        help='Fits original drop images to drop location')
+    parser.add_argument('-convex', '--convex_overlay', action='store_true', default=False,
+                        help='Fits cookie cutter of original drop images to drop location')
+    parser.add_argument('-circle', '--circle_overlay', action='store_true', default=False,
+                        help='Fits hole-punch circle of original drop images to drop location')
+    parser.add_argument('-debug', '--debug', action='store_true', default=False,
+                        help='Show images during process')
     return parser
 
 
@@ -24,11 +33,18 @@ def main():
     temperature = args.plate_temp
     rock_drive_ip = "169.230.29.134"
 
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
     for plateID in plateID_list:
+        output_dir = os.path.join(args.output_plate_folder,str(plateID))
         transfer_imgs(plateID, output_dir, rock_drive_ip)
+
+    for plateID in plateID_list:
+        output_dir = os.path.join(args.output_plate_folder,str(plateID))
         organizeImages(output_dir)
         rename_overview_images_well_id(output_dir)
-        bounding_box_overlay(output_dir)
+        bounding_box_overlay(output_dir, box=args.box_overlay, circle=args.circle_overlay, convex=args.convex_overlay, debug=args.debug)
         img_well_dict = get_dict_image_to_well(output_dir)
         createJson(plate_dir=output_dir, plate_id=plateID, plate_temperature=temperature,
                    dict_image_path_subwells=img_well_dict)

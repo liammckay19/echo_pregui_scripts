@@ -4,12 +4,7 @@
 
 import glob
 import numpy as np
-from skimage.transform import hough_circle, hough_circle_peaks
-from skimage.draw import circle_perimeter
-from skimage.util import img_as_ubyte
-from skimage import io
 import os
-from classes_only import Plate
 
 from datetime import datetime
 import time as ti
@@ -61,8 +56,8 @@ def process_found_circles(circles):
 def save_canny_save_fit(path, temp, debug=False):
     accum_d, cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = [0, 0, 0, 0, 0, 0, 0]  # initialize variables
 
-    zstack = io.imread(path)
-    image = img_as_ubyte(zstack[:, :, 0])  # finds the top x-y pixels in the z-stack
+    image = cv2.imread(path)
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     ret, thresh = cv2.threshold(image, 30, 74, cv2.THRESH_TOZERO_INV)
     ret, thresh = cv2.threshold(thresh, 0, 255, cv2.THRESH_BINARY)  # brightens grey to white TO ZERO threshold image
     edged = cv2.Canny(thresh, 101, 112)

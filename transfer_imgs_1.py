@@ -3,10 +3,8 @@
 
 import argparse
 import os
-from glob import glob
 from os.path import join, exists
 import subprocess  # runs bash commands in python
-import sys
 
 from tqdm import tqdm
 
@@ -20,6 +18,42 @@ def argparse_reader():
     return parser
 
 
+def get_path_names_necessary(rsync_out, selected_batches=None):
+    image_names = set()
+    unique_paths = []
+    for line in sorted(rsync_out.split('\n'), reverse=True):
+        if ".jpg" in line:
+            batch = int(
+                line.split('batchID_')[1].split('wellNum')[0].replace(os.sep, '').replace("\\", '').replace('n',
+                                                                                                            ''))
+            jpg = line.split(os.sep)[-1]
+            if jpg not in image_names:
+                unique_paths.append(line)
+                image_names.add(jpg)
+            if selected_batches is not None:
+                if batch in selected_batches:
+                    unique_paths.append(line)
+    return unique_paths
+
+
+def sort_image_path_names(paths):
+    # sort by image name
+    drop_images_paths = []
+    overview_drop_location_paths = []
+    overview_extended_focus_paths = []
+    i = 1
+    for path in list(sorted([line for line in paths], key=lambda line: line.split(os.sep)[-1])):
+        if "ef.jpg" in path and i == 1:
+            drop_images_paths.append(path)
+            i += 1
+        elif "dl.jpg" in path:
+            overview_drop_location_paths.append(path)
+        elif "ef.jpg" in path and i == 2:
+            overview_extended_focus_paths.append(path)
+            i = 1
+    return drop_images_paths, overview_drop_location_paths, overview_extended_focus_paths
+
+
 def run(plateID, output_dir, rock_drive_ip):
     if not exists(join(output_dir)):
         os.mkdir(join(output_dir))
@@ -29,6 +63,7 @@ def run(plateID, output_dir, rock_drive_ip):
                                                                                           2:] + '/plateID_' + str(
                          plateID) + '/', str(output_dir) + '/']
 
+        print()
         print(*rsync_log)
         rsync = subprocess.run(rsync_log, capture_output=True)
         rsync_out = rsync.stdout.decode("utf-8")
@@ -41,45 +76,21 @@ def run(plateID, output_dir, rock_drive_ip):
             for file in sorted(log_rsync_file.readlines()):
                 if 'batchID_' in file:
                     batches.add(int(
-                        file.split('batchID_')[1].split('wellNum')[0].replace("/", '').replace("\\", '').replace('n', '')))
+                        file.split('batchID_')[1].split('wellNum')[0].replace("/", '').replace("\\", '').replace('n',
+                                                                                                                 '')))
         batches = sorted(list(batches))
         # batchID_overview = batches[-1]  # last in list
         # batchID_drop = batches[0]  # first in list
-        print("batch IDs selected: ", *batches)
+        print("batch IDs selected: droplocation, dropimg: ", batches[0], batches[-1])
 
+        selected_batches = (batches[0], batches[-1])
         # ### Create a list of files to transfer in a text file for rsync to transfer using the --files-from option
 
-        # get unique image names
-        # Tries to grab all the images in the same batch first, because doing two batches is two different batches of images
-        """ 
-        i think batch id are different times taking the pictures so if you try to match a extended focus to a drop 
-        image from two different imaging times(aka batches) it will not match exactly and could be the problem with 
-        the well not matching
-        """
-        image_names = set()
-        path_names_only_necessary = list()
-        for line in rsync_out.split('\n'):
-            if ".jpg" in line:
-                image_name = line.split('/')[-1]
-                if image_name not in image_names:
-                    path_names_only_necessary.append(line)
-                image_names.add(line.split('/')[-1])
-        print()
+        # get unique image names starting from the last image taken. Most recent images will be used.
+        path_names_only_necessary = get_path_names_necessary(rsync_out)
 
-        drop_images_paths = []
-        overview_drop_location_paths = []
-        overview_extended_focus_paths = []
-        # sort by image name
-        i = 1
-        for path in list(sorted([line for line in path_names_only_necessary], key=lambda line: line.split(os.sep)[-1])):
-            if "ef.jpg" in path and i == 1:
-                drop_images_paths.append(path)
-                i += 1
-            elif "dl.jpg" in path:
-                overview_drop_location_paths.append(path)
-            elif "ef.jpg" in path and i == 2:
-                overview_extended_focus_paths.append(path)
-                i = 1
+        drop_images_paths, overview_drop_location_paths, overview_extended_focus_paths = sort_image_path_names(
+            path_names_only_necessary)
 
         print("drop image:", len(drop_images_paths), " images \noverview ef:", len(overview_extended_focus_paths),
               " images \noverview drop location:", len(overview_drop_location_paths), "images")
@@ -96,6 +107,7 @@ def run(plateID, output_dir, rock_drive_ip):
                                                                         'plateID_' + str(plateID)),
             join(str(output_dir), "")
         ]
+        print()
         print(*rsync_download)
         rsync_stdout_download = subprocess.run(rsync_download, capture_output=True).stdout.decode("utf-8")
         downloaded_files = 0
@@ -105,7 +117,7 @@ def run(plateID, output_dir, rock_drive_ip):
         print("Downloaded Files = ", downloaded_files, "(should be 288 = 96*3)")
     else:
         try:
-            raise RuntimeWarning("Using files from previous download in "+output_dir)
+            raise RuntimeWarning("Using files from previous download in " + output_dir)
         except RuntimeWarning as e:
             print(e)
             pass
