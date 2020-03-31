@@ -5,25 +5,38 @@ import numpy as np
 import time, sys
 import glob
 import os
+import argparse
 
 from cv2 import cv2
 from tqdm import tqdm
 from Plate import Plate
 
-plate = Plate(r=8, c=12, subwell_num=1)  # don't need to worry about subwell (that's specified in img path)
-white = (255, 255, 255)  # white - color
+PLATE = Plate(r=8, c=12, subwell_num=1)  # don't need to worry about subwell (that's specified in img path)
+COLOR_WHITE = (255, 255, 255)  # white - color
 
+def argparse_reader():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('output_plate_folder', type=str, help='Parent folder of batchID folders', required=True)
+    parser.add_argument('-debug', '--debug', action='store_true',
+                        help='Shows images that well/drop were not found in analysis')
+    return parser
 
 def save_overview_img(original_fp, imageDirectory):
+    """
+    Saves original overview image to its own folder
+    @param original_fp: Overview image downloaded location 
+    @param imageDirectory: output directory
+    @return: Well_subwell ID (A01_2)
+    """
     original_fp = os.path.abspath(original_fp)
     fp = original_fp.split(os.path.sep)
 
     well_num = "".join([(fp[x] if c == 0 else '') for x, c in
-                        enumerate([s.find('well') for s in fp])])  # just gets the wellNum_## folder name
+                        enumerate([s.find("well") for s in fp])])  # just gets the wellNum_## folder name
 
     subwell_number = fp[-1][1]
 
-    well_id = plate.get_number_to_well_id(int(well_num.split("_")[1])).split("_")[0]
+    well_id = PLATE.get_number_to_well_id(int(well_num.split("_")[1])).split("_")[0]
     new_fp = os.path.join(imageDirectory, "overview", well_id + "_" + subwell_number + ".jpg")
 
     subprocess.run(["cp", original_fp, new_fp])
@@ -31,6 +44,17 @@ def save_overview_img(original_fp, imageDirectory):
 
 
 def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_mask_2=None):
+    """
+    Overlay zoom image (with its mask) onto overview image at the location of the red bounding-box drop location
+    @param b_x: top left X of box
+    @param b_y: top left Y of box
+    @param b_w: width of box
+    @param b_h: height of box 
+    @param zoom: zoom/drop image (in cv2 array format)
+    @param overview_ef: overview image (in cv2 array format)
+    @param black_white_mask_2: mask for zoom image(in cv2 array format)
+    @return: overlayed image (in cv2 array format)
+    """
     if black_white_mask_2 is None:
         black_white_mask_2 = cv2.bitwise_not(
             np.zeros((zoom.shape[0], zoom.shape[1]), np.uint8))  # make white box zoom size
@@ -105,9 +129,26 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
         return overview_ef
 
 
-def find_image_features(image, mask_color=True, mask_color_min=None, mask_color_max=None, percent_arc_length=0.1,
-                        bilateral=False, CONTOUR_METHOD=cv2.CHAIN_APPROX_SIMPLE, RETREIVAL_METHOD=cv2.RETR_EXTERNAL,
-                        blur_image=True, blur_iterations=1, box=False):
+def find_image_features(image: np.ndarray, mask_color: bool = True, mask_color_min: np.array = None, mask_color_max: np.array() = None,
+                        percent_arc_length: float = 0.1,
+                        bilateral: bool = False, CONTOUR_METHOD: int = cv2.CHAIN_APPROX_SIMPLE,
+                        RETREIVAL_METHOD: int = cv2.RETR_EXTERNAL,
+                        blur_image: bool = True, blur_iterations: int = 1, box: bool = False):
+    """
+    Analyze image for shapes and colors
+    @param image: cv2 numpy array image
+    @param mask_color: bool look for a color
+    @param mask_color_min: Min BGR values (blue, green, red)
+    @param mask_color_max: Max BGR values (blue, green, red)
+    @param percent_arc_length: Contour sensitivity to hard turns
+    @param bilateral: bool Use bilateral image filtering (very slow)
+    @param CONTOUR_METHOD: Use simple chain approximation or return all contours found (slower)
+    @param RETREIVAL_METHOD: Return a hierarchy of contours
+    @param blur_image: bool to blur image during contour finding (Gaussian)
+    @param blur_iterations: Times to blur the image over on itself (Gaussian)
+    @param box: bool return best fit box
+    @return: (all arrays of points on image) contours, hierarchy, polygon shape contours, box with biggest area
+    """
     if mask_color_max is None:
         mask_color_max = np.array([255, 255, 255])
     if mask_color_min is None:
@@ -173,6 +214,14 @@ def find_image_features(image, mask_color=True, mask_color_min=None, mask_color_
 
 
 def get_drop_location_box(overview_dl, mask_color_min, mask_color_max, debug=False):
+    """
+    Get bounding box coordinates for drop location
+    @param overview_dl: Drop location image
+    @param mask_color_min: BGR color minimum
+    @param mask_color_max: BGR color maximum
+    @param debug: shows box found outlined in blue color
+    @return:
+    """
     _, boundRect, _, box_with_biggest_area = find_image_features(overview_dl,
                                                                  mask_color_min=mask_color_min,
                                                                  mask_color_max=mask_color_max, blur_iterations=0,
@@ -202,6 +251,15 @@ def get_drop_location_box(overview_dl, mask_color_min, mask_color_max, debug=Fal
 
 
 def find_biggest_contour(image, contours, max_area=None, min_area=100 ** 2, max_border=(100, 100, 100, 100)):
+    """
+    Get biggest area contour in list of contours
+    @param image: image contours processed on
+    @param contours: list of contours (from cv2.findContours())
+    @param max_area: Upper limit of contour area
+    @param min_area: Lower limit of contour area
+    @param max_border: Border around image where contour can exist
+    @return: contour
+    """
     if max_area is None:
         max_area = max(image.shape) ** 2
 
@@ -243,6 +301,18 @@ def find_biggest_contour(image, contours, max_area=None, min_area=100 ** 2, max_
 
 def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=False, box=True, convex=False,
                    debug=False):
+    """
+    Overlay drop image in convex, circle or box shape on overview image from Rockimager
+    @param overview_dl_fh: Overview drop location file path
+    @param overview_ef_fh: Overview file path
+    @param zoom_fh: Drop file path
+    @param output_fh: Overlay output file path
+    @param circle: bool, Shape circle cut out
+    @param box: bool, Shape box overlay
+    @param convex: bool, Shape convex cut out
+    @param debug: Show images during processing
+    @return: overlayed image
+    """
     ### This is the main function of the script
 
     overview_dl = cv2.imread(overview_dl_fh)
@@ -289,7 +359,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
                 (circle_x, circle_y), radius = cv2.minEnclosingCircle(cnt)
                 (circle_x, circle_y, radius) = (int(circle_x), int(circle_y), int(radius))
                 circle_mask = np.zeros((zoom_grey.shape[0], zoom_grey.shape[1]), np.uint8)
-                cv2.circle(circle_mask, (circle_x, circle_y), radius, white, -1)
+                cv2.circle(circle_mask, (circle_x, circle_y), radius, COLOR_WHITE, -1)
                 overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, circle_mask)
 
             elif convex:
@@ -300,7 +370,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
 
                 # draw them on a mask
                 for i in range(len(hull)):
-                    cv2.drawContours(black_white_mask, hull, i, white, -1, 8)
+                    cv2.drawContours(black_white_mask, hull, i, COLOR_WHITE, -1, 8)
 
                 # find contours of that mask (adds some smoothing)
                 cnts_mask, hierarchy_mask, _, _, _ = find_image_features(black_white_mask, mask_color=False,
@@ -319,7 +389,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
 
                 # draw them on a mask
                 for i in range(len(hull)):
-                    cv2.drawContours(black_white_mask_2, hull, i, white, -1, 8)
+                    cv2.drawContours(black_white_mask_2, hull, i, COLOR_WHITE, -1, 8)
 
                 overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_mask_2)
     elif box:
@@ -332,6 +402,14 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
 
 
 def run(imageDirectory, circle=False, box=True, convex=False, debug=False):
+    """
+    Overlay a directory of images
+    @param imageDirectory: output dir
+    @param circle: bool Shape circle cut out
+    @param box: bool Shape box on zoom image
+    @param convex: bool Shape convex cut out
+    @param debug: Shows images during processing
+    """
     if not os.path.exists(imageDirectory):  # case 2: directory doesn't exist
         print("Error: cannot find directory " + imageDirectory)
     else:
@@ -384,17 +462,14 @@ def run(imageDirectory, circle=False, box=True, convex=False, debug=False):
 
 
 def main():
+    """
+    Run only overlay step. Overlay images in a directory with timing
+    """
     ### save the time to later see how long script took
     t0 = time.time()
-    # save usage to a string to save space
-    usage = "Usage: python bounding_box_overlay.py [parent image directory]"
-    imageDirectory = ''
-    try:  # case 1: catches if there is no argv 1
-        # not the greatest, but works
-        imageDirectory = sys.argv[1]
-    except IndexError:  # if there is, leave the program
-        print(usage)
-        exit(1)
+
+    args = argparse_reader().parse_args()
+    imageDirectory = args.output_plate_folder
     run(imageDirectory)
     ### print the time it took to run the script
     print("time to run: %s" % (time.time() - t0))

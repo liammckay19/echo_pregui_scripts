@@ -10,6 +10,10 @@ from tqdm import tqdm
 
 
 def argparse_reader():
+    """
+    Parse arguments for the image transfer script
+    @return: parse object with arguments
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('plateID', type=int,
                         help='RockMaker Plate ID (4 or 5 digit code on barcode or 2nd number on RockMaker screen experiment file')
@@ -19,6 +23,12 @@ def argparse_reader():
 
 
 def get_path_names_necessary(rsync_out, selected_batches=None):
+    """
+    Get unique list of path names from rsync file output
+    @param rsync_out: rsync files matched output
+    @param selected_batches: Batches to use for downloading images (if not specified, find images starting at the last batch)
+    @return:
+    """
     image_names = set()
     unique_paths = []
     for line in sorted(rsync_out.split('\n'), reverse=True):
@@ -37,11 +47,16 @@ def get_path_names_necessary(rsync_out, selected_batches=None):
 
 
 def sort_image_path_names(paths):
-    # sort by image name
+    """
+    Put paths into 3 bins: drop location, zoom, overview
+    @param paths:  list of unique image paths from rsync
+    @return: zoom, drop location, overview
+    """
     drop_images_paths = []
     overview_drop_location_paths = []
     overview_extended_focus_paths = []
     i = 1
+                                                                        # sort by image name
     for path in list(sorted([line for line in paths], key=lambda line: line.split(os.sep)[-1])):
         if "ef.jpg" in path and i == 1:
             drop_images_paths.append(path)
@@ -55,6 +70,12 @@ def sort_image_path_names(paths):
 
 
 def run(plateID, output_dir, rock_drive_ip):
+    """
+    Transfer Rockimager images from NAS server using rsync
+    @param plateID: Rockimager plate ID
+    @param output_dir: local output directory
+    @param rock_drive_ip: IP address of NAS server
+    """
     if not exists(join(output_dir)):
         os.mkdir(join(output_dir))
 
@@ -121,7 +142,6 @@ def run(plateID, output_dir, rock_drive_ip):
         except RuntimeWarning as e:
             print(e)
             pass
-    return
 
 
 def main():

@@ -3,7 +3,7 @@ import os
 
 from transfer_imgs_1 import run as transfer_imgs
 from bounding_box_overlay_2 import run as bounding_box_overlay
-from pregui_img_analysis_3 import get_dict_image_to_well, createJson
+from pregui_img_analysis_3 import get_dict_image_to_well, create_json
 from organizeImages import organizeImages, rename_overview_images_well_id
 
 def argparse_reader_main():
@@ -46,8 +46,8 @@ def main():
         rename_overview_images_well_id(output_dir)
         bounding_box_overlay(output_dir, box=args.box_overlay, circle=args.circle_overlay, convex=args.convex_overlay, debug=args.debug)
         img_well_dict = get_dict_image_to_well(output_dir)
-        createJson(plate_dir=output_dir, plate_id=plateID, plate_temperature=temperature,
-                   dict_image_path_subwells=img_well_dict)
+        create_json(plate_dir=output_dir, plate_id=plateID, plate_temperature=temperature,
+                    dict_image_path_subwells=img_well_dict)
 
 
 if __name__ == '__main__':
