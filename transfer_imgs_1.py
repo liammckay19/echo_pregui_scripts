@@ -1,6 +1,3 @@
-### Testing for the corect number of input arguments
-### 	expecting 1 arugment for PlateID
-
 import argparse
 import os
 from os.path import join, exists
@@ -56,7 +53,7 @@ def sort_image_path_names(paths):
     overview_drop_location_paths = []
     overview_extended_focus_paths = []
     i = 1
-                                                                        # sort by image name
+    # sort by image name
     for path in list(sorted([line for line in paths], key=lambda line: line.split(os.sep)[-1])):
         if "ef.jpg" in path and i == 1:
             drop_images_paths.append(path)

@@ -1,7 +1,3 @@
-# python3.7.0
-# Project/dropk#/well/profileID/name_ef.jpg
-# run this command above the echo project directory
-
 import glob
 import numpy as np
 import os
@@ -15,6 +11,10 @@ import argparse
 
 
 def argparse_reader():
+    """
+    Parse arguments for the img analysis script
+    @return: parse object with arguments
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('plateID', type=int,
                         help='RockMaker Plate ID (4 or 5 digit code on barcode or 2nd number on RockMaker screen experiment file')
@@ -107,7 +107,7 @@ def get_dict_image_to_well(plate_dir):
     """
     Create data file in json format for relating well id to image path
     @param plate_dir: str output directory
-    @return:
+    @return: dict well_id: 'path/path'
     """
     current_directory = os.getcwd()
 

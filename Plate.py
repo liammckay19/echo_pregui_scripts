@@ -46,6 +46,10 @@ class Plate():
         return row+self.zero_format.format(int(col))+"_"+str(subcol)
 
     def create_plate_matrix(self):
+        """
+        Creates Pandas DataFrame of a plate for looking up well_ids
+        @return: plate matrix
+        """
         cols = list(str(n) for n in list(range(1, self.col_num + 1)))
         if self.row_num > len(string.ascii_letters):
             rows = itertools.product(string.ascii_uppercase, repeat=self.row_num // 27 + 1)

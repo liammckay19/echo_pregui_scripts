@@ -2,7 +2,7 @@ import subprocess
 
 import imutils
 import numpy as np
-import time, sys
+import time
 import glob
 import os
 import argparse
@@ -15,6 +15,10 @@ PLATE = Plate(r=8, c=12, subwell_num=1)  # don't need to worry about subwell (th
 COLOR_WHITE = (255, 255, 255)  # white - color
 
 def argparse_reader():
+    """
+    Parse arguments for the bounding box overlay script
+    @return: parse object with arguments
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('output_plate_folder', type=str, help='Parent folder of batchID folders', required=True)
     parser.add_argument('-debug', '--debug', action='store_true',

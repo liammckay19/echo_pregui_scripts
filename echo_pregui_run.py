@@ -4,7 +4,7 @@ import os
 from transfer_imgs_1 import run as transfer_imgs
 from bounding_box_overlay_2 import run as bounding_box_overlay
 from pregui_img_analysis_3 import get_dict_image_to_well, create_json
-from organizeImages import organizeImages, rename_overview_images_well_id
+from organizeImages import organize_images, rename_overview_images_well_id
 
 def argparse_reader_main():
     parser = argparse.ArgumentParser()
@@ -42,7 +42,7 @@ def main():
 
     for plateID in plateID_list:
         output_dir = os.path.join(args.output_plate_folder,str(plateID))
-        organizeImages(output_dir)
+        organize_images(output_dir)
         rename_overview_images_well_id(output_dir)
         bounding_box_overlay(output_dir, box=args.box_overlay, circle=args.circle_overlay, convex=args.convex_overlay, debug=args.debug)
         img_well_dict = get_dict_image_to_well(output_dir)
