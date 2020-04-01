@@ -1,162 +1,192 @@
-#python3.7.0
-#Project/dropk#/well/profileID/name_ef.jpg
-#run this command above the echo project directory
+# python3.7.0
+# Project/dropk#/well/profileID/name_ef.jpg
+# run this command above the echo project directory
 
 import glob
-import sys
-import pickle as pkl
-import matplotlib.pyplot as plt
 import numpy as np
-from skimage.transform import hough_circle, hough_circle_peaks
-from skimage.feature import canny
-from skimage.draw import circle_perimeter
-from skimage.util import img_as_ubyte
-from skimage.util import pad
-from skimage import io
 import os
-from classes_only import Well_well_well as well
-from classes_only import Plate
 
-from datetime import datetime, date, time
+from datetime import datetime
 import time as ti
 import json
 from tqdm import tqdm
+import cv2
+import argparse
 
-#Function Definitions
-#Params
-    #r1 lower radius bound
-    #r2 upper radius bound
-    #search step size between radii
-    #edge: a binary image which is the output of canny edge detection
-    #peak_num the # of circles searched for in hough space
 
-#Output:
-    #accums 
-    #cx : circle center x
-    #cy : circle center y
-    #radii circle radii
-def circular_hough_transform(r1,r2,step,edge, peak_num):  # do we need to do this? difference in a radium in circle matters to the conversion rate
-    # be able to distinguish up to one pixel of the circle 
+def argparse_reader():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('plateID', type=int,
+                        help='RockMaker Plate ID (4 or 5 digit code on barcode or 2nd number on RockMaker screen experiment file')
+    parser.add_argument('output_plate_folder', type=str, help='Output folder for images and json')
+    parser.add_argument('plate_temp', type=int, help='Temperature of plate stored at')
+    parser.add_argument('-json', '--generateJson', action='store_true',
+                        help="JSON Output re-run well pixel finding algorithm")
+    parser.add_argument('-debug', '--debug', action='store_true',
+                        help='Shows images that well/drop were not found in analysis')
+    return parser
 
-    hough_radii = np.arange(r1,r2,step)
-    hough_res = hough_circle(edge,hough_radii)
-    accums, cx, cy, radii = hough_circle_peaks(hough_res,hough_radii,total_num_peaks=peak_num)
-    return accums, cx, cy, radii
 
-def single_radii_circular_hough_transform(r1,edge):
-    hough_res = hough_circle(edge,r1)
-    accums, cx, cy, radii = hough_circle_peaks(hough_res,r1,total_num_peaks=1)
-    return accums, cx, cy, radii
+# https://stackoverflow.com/questions/11686720/is-there-a-numpy-builtin-to-reject-outliers-from-a-list
+def reject_outliers(data, m=2):
+    """
+    Trim data in numpy array
+    @param data: numpy array
+    @param m: max standard deviations
+    @return: trimmed data
+    """
+    return data[abs(data - np.mean(data)) <= m * np.std(data)]
 
-#Params
-    #This functions draws a circle of radius r centered on x,y on an image. It draws the center of the circle
-    #image: input greyscale numpy 2darray
-    #cx: int center x
-    #cy: int center y
-    #color: single 8-bit channel int. i.e 0-255
-def draw_circles_on_image(image,cx,cy,radii,colour,dotsize):
-    for center_y, center_x, radius in zip(cy,cx,radii):
-        circy, circx = circle_perimeter(center_y,center_x,radius)
-        image[circy,circx] = colour
-        image[cy[0]-dotsize:cy[0]+dotsize,cx[0]-dotsize:cx[0]+dotsize] = colour
 
-def draw_circles_on_image_center(image,cx,cy,radii,colour,dotsize):
-    for center_y, center_x, radius in zip(cy,cx,radii):
-        circy, circx = circle_perimeter(center_y,center_x,radius)
-        image[circy,circx] = colour
-        image[cy[0]-dotsize:cy[0]+dotsize,cx[0]-dotsize:cx[0]+dotsize] = colour
+def process_found_circles(circles):
+    """
+    Average trimmed data to get one circle x,y,radius
+    @param circles: numpy array of circles
+    @return: x position, y position, radius of circle
+    """
+    x, y, r = np.average(reject_outliers(circles[:, 0])).astype(int), np.average(reject_outliers(circles[:, 1])).astype(
+        int), np.average(reject_outliers(circles[:, 2])).astype(int)
+    return x, y, r
 
-def save_canny_save_fit(path,sig,low,high,temp): #sig=3,low = 0, high = 30
-    zstack = io.imread(path)  
-    image = img_as_ubyte(zstack[:,:,0]) # finds the top x-y pixels in the z-stack
-    edges = canny(image,sigma=sig,low_threshold=low,high_threshold=high)   # edge detection
-    accum_d, cx_d, cy_d, radii_d = circular_hough_transform(135,145,2,edges,1) #edge detection on drop, params: r1,r2,stepsize,image,peaknum. Key params to change are r1&r2 for start & end radius
-    
-    if temp == '20C': ### This works well for echo RT plate type for rockmaker
-        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(479,495,1,edges,1) #edge detection on well. Units for both are in pixels
-    else: ### This works well for echo 4C plate type for rockmaker
-        accum_w, cx_w, cy_w, radii_w = circular_hough_transform(459,475,1,edges,1) #edge detection on well. Units for both are in pixels
 
-    return cx_d,cy_d,radii_d, cx_w, cy_w, radii_w
+def save_canny_save_fit(path, temp, debug=False):
+    """
+    Find location of well center, drop center on overview image. Averages and trims circles found to be more accurate
+    @param path: overview file path
+    @param temp: int Tempurature of storage
+    @param debug: Show wells and drop found
+    @return:
+    """
+    accum_d, cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = [0, 0, 0, 0, 0, 0, 0]  # initialize variables
 
-    
-def main():
+    image = cv2.imread(path)
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    ret, thresh = cv2.threshold(image, 30, 74, cv2.THRESH_TOZERO_INV)
+    ret, thresh = cv2.threshold(thresh, 0, 255, cv2.THRESH_BINARY)  # brightens grey to white TO ZERO threshold image
+    edged = cv2.Canny(thresh, 101, 112)
 
-    t0=ti.time()  ### save time to know how long this script takes (this one takes longer than step 2)
+    drop_circles = cv2.HoughCircles(image=image, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=135,
+                                    maxRadius=145)
 
-    if len(sys.argv) != 2:
-        print('Usage: python pregui_analysis.py [plate_dir]')
-        print('Aborting script')
-        sys.exit()
+    if int(temp) == 20:  ### This works well for echo RT plate type for rockmaker
+        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=475,
+                                   maxRadius=495)
+    else:  ### This works well for echo 4C plate type for rockmaker
+        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=459,
+                                   maxRadius=475)
 
+    image = cv2.UMat(image)
+    if circles is not None:
+        circles = np.round(circles[0, :]).astype("int")
+        cx_w, cy_w, radii_w = process_found_circles(circles)
+        if debug:
+            cv2.circle(image, (cx_w, cx_y), radii_w, color=(255,0,0)) # blue
+            cv2.imshow("could not find drop, press key to continue", image)
+            cv2.waitKey(0)
+    else:
+        if debug:
+            cv2.imshow("could not find well, press key to continue", np.concatenate([image, edged], axis=1))
+            cv2.waitKey(0)
+
+    if drop_circles is not None:
+        drop_circles = np.round(drop_circles[0, :]).astype("int")
+        cx_d, cy_d, radii_d = process_found_circles(drop_circles)
+        if debug:
+            cv2.circle(image, (cx_d, cx_d), radii_d, color=(0,102,204)) # orange
+            cv2.imshow("could not find drop, press key to continue", image)
+            cv2.waitKey(0)
+    else:
+        if debug:
+            cv2.imshow("could not find drop, press key to continue", image)
+            cv2.waitKey(0)
+
+    return cx_d, cy_d, radii_d, cx_w, cy_w, radii_w
+
+
+def get_dict_image_to_well(plate_dir):
+    """
+    Create data file in json format for relating well id to image path
+    @param plate_dir: str output directory
+    @return:
+    """
     current_directory = os.getcwd()
-    plate_dir = sys.argv[1]
 
-
-    image_list=glob.glob(os.path.join(current_directory,plate_dir.replace("/",""),"overlayed","*"))
-    image_list.sort(key=lambda x: (int(x.split('well_')[1].split('_overlay')[0].split("_subwell")[0])))
+    image_list = glob.glob(os.path.join(current_directory, plate_dir, "overlayed", "*"))
+    overview_list = list(
+        sorted(glob.glob(os.path.join(current_directory, plate_dir, "overview", "*")), key=lambda x: x))
+    print("overviewimgs = ", len(overview_list))
+    image_list = sorted(image_list, key=lambda x: x)
 
     dict_image_path_subwells = {}
-    for p in image_list:
-        well_subwell=p.split('well_')[1].split('_overlay')[0].replace("subwell","")
-        well,subwell = well_subwell.split("_")
-        well = "{:02d}".format(int(well))
-        well_subwell = well+"_"+subwell
-        dict_image_path_subwells[well_subwell] = p
+    for p, o in zip(image_list, overview_list):
+        well_subwell = p.split("overlayed")[1].replace(".jpg", "").replace(os.sep, '')
+        well, subwell = well_subwell.split("_")
 
-    # Try to find the plateid.txt file
-    try:
-        with open(os.path.join(current_directory,plate_dir,"plateid.txt"), 'r') as plate_id_file:
-            plate_id = int(plate_id_file.read().rstrip())
-    except:
-        print("File Error: plateid.txt not found. JSON will not have plate_id key")
-        plate_id = "UNKNOWN_ID_at_"+plate_dir
-    
+        well_subwell = well + "_" + subwell
+        dict_image_path_subwells[well_subwell.replace(os.path.sep, "")] = p, o
+    return dict_image_path_subwells
 
-    try:
-        with open(os.path.join(current_directory,plate_dir,"temperature.txt"), 'r') as plate_id_file:
-            plate_temperature = plate_id_file.read().rstrip()
-    except:
-        print("File Error: temperature.txt not found. JSON will not have temperature defined")
-        plate_temperature = "UNKNOWN"
 
-    plateKeys = ["date_time","temperature"]
-    wellKeys = ["image_path","well_id","well_radius","well_x","well_y","drop_radius","drop_x","drop_y","offset_x","offset_y"]
+def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_image_path_subwells: dict,
+                debug=False) -> None:
+    """
+    Create pregui script json file
+    @param plate_dir: output dir
+    @param plate_id: Rockimager plate id
+    @param plate_temperature: storage temperatrue
+    @param dict_image_path_subwells: well id to image path relationship (get_dict_image_to_well(plate_dir))
+    @param debug: Show images that are being processed
+    """
+    current_directory = os.getcwd()
+
+    plateKeys = ["date_time", "temperature"]
+    wellKeys = ["image_path", "well_id", "well_radius", "well_x", "well_y", "drop_radius", "drop_x", "drop_y",
+                "offset_x", "offset_y"]
 
     ### Create json output dictionary
     a = {}
     a[plate_id] = {}
-    a[plate_id] = {key:0 for key in plateKeys}
+    a[plate_id] = {key: 0 for key in plateKeys}
     a[plate_id]["plate_id"] = plate_id
     a[plate_id]["date_time"] = datetime.now().isoformat(" ")
     a[plate_id]["temperature"] = plate_temperature
-    a[plate_id]["subwells"] = {}    
+    a[plate_id]["subwells"] = {}
     if plate_temperature == "UNKNOWN":
-        print("File Error: Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
+        try:
+            raise FileNotFoundError(
+                "Since the plate temperature could not be found, circles will be fit for 20C room temp. continuing...")
+        except FileNotFoundError:
+            pass
     print("Finding pixel location of wells.")
-    for im_idx, im_path in tqdm(sorted(dict_image_path_subwells.items())):
+    for im_idx, im_paths in tqdm(sorted(dict_image_path_subwells.items())):
+        im_path, im_overview = im_paths
         if im_path:
-            cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_path,3,0,50,plate_temperature) ### calling this function for 4c or 20c temp
-        # cx_d,cy_d,radii_d, cx_w, cy_w, radii_w = [0,0,0,0,0,0] # time saving code (will output zeros)
-        ### radii radius of the drop circle 
-        ### everything _w is for the well
-        ### everything _d is for the drop
-        ### plan on keeping the drop information
+            cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_overview,
+                                                                           plate_temperature,
+                                                                           debug)  ### calling this function for 4c or 20c temp
+        else:
+            try:
+                raise FileNotFoundError("Well x,y,r will be zeros " + im_idx)
+            except FileNotFoundError:
+                cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = [0, 0, 0, 0, 0, 0]  # time saving code (will output zeros)
+
+        # radii radius of the drop circle
+        # everything _w is for the well
+        # everything _d is for the drop
+        # plan on keeping the drop information
         offset_x = cx_d - cx_w
         offset_y = cy_w - cy_d
-        well,subwell = im_idx.split("_")
+        well, subwell = im_idx.split("_")
 
-        str_well_id = Plate.well_names[int(well)-1]
+        letter_number_new_image_path = im_path
+        if 'well' in im_path:
+            letter_number_new_image_path = im_path.split('well')[0] + well + "_" + subwell + ".jpg"
+            os.rename(im_path, letter_number_new_image_path)
 
-        letter_number_new_image_path = im_path.split('well')[0]+str_well_id+"_"+subwell+".jpg"
-        os.rename(im_path,letter_number_new_image_path)
-
-        # print(cx_w,cy_w,radii_w,cx_d,cy_d,radii_d,cx_w,cy_w,radii_d,name,im_path,0,0,0)
-
-        str_currentWell = "{0}_{1}".format(str_well_id, subwell)
-        a[plate_id]["subwells"][str_currentWell] = {key:0 for key in wellKeys}
+        str_currentWell = "{0}_{1}".format(well, subwell)
+        a[plate_id]["subwells"][str_currentWell] = {key: 0 for key in wellKeys}
         a[plate_id]["subwells"][str_currentWell]["image_path"] = letter_number_new_image_path
-        a[plate_id]["subwells"][str_currentWell]["well_id"] = str_well_id
+        a[plate_id]["subwells"][str_currentWell]["well_id"] = well
         a[plate_id]["subwells"][str_currentWell]["well_radius"] = int(radii_w)
         a[plate_id]["subwells"][str_currentWell]["well_x"] = int(cx_w)
         a[plate_id]["subwells"][str_currentWell]["well_y"] = int(cy_w)
@@ -167,17 +197,51 @@ def main():
         a[plate_id]["subwells"][str_currentWell]["offset_x"] = int(offset_x)
         a[plate_id]["subwells"][str_currentWell]["subwell"] = int(subwell)
 
-    # print("created:", os.path.join(current_directory,plate_dir,plate_dir.replace(os.path.join("a","").replace("a",""),'')) + '.json')
+    print("created:", os.path.join(current_directory, plate_dir,
+                                   plate_dir.replace(os.path.join("a", "").replace("a", ""), '')) + '.json')
+    with open(os.path.join(current_directory, plate_dir,
+                           plate_dir.replace(os.path.join("a", "").replace("a", ""), '')) + '.json', 'w') as fp:
 
-    json_file_name = os.path.join(current_directory,plate_dir,plate_dir.replace("/","").replace("\\\\","") + '.json')
-    print(json_file_name)
-    with open(json_file_name, 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
 
-    print("time to run: %s minutes"%str(int(ti.time()-t0)/60))
+
+def main():
+    """
+    Run image analysis on a directory of images containing overlayed, overview, and batchID_#### folders
+    """
+    current_directory = os.getcwd()
+
+    args = argparse_reader().parse_args()
+
+    t0 = ti.time()  ### save time to know how long this script takes (this one takes longer than step 2)
+
+    plate_dir = args.output_plate_folder
+    plate_id = args.plateID
+    plate_temperature = args.plate_temp
+    run_only_json = args.generateJson
+    if run_only_json:
+        try:
+            with open(os.path.join(current_directory, plate_dir, "dict_image_path_subwells.json"),
+                      'r') as images_to_subwell_json:
+                d = dict(json.load(images_to_subwell_json))
+            create_json(plate_dir=plate_dir, plate_id=plate_id, plate_temperature=plate_temperature,
+                        dict_image_path_subwells=d, debug=args.debug)
+            exit(1)
+        except FileNotFoundError as e:
+            print(e)
+            exit(0)
+
+    dict_image_path_subwells = get_dict_image_to_well(plate_dir=plate_dir)
+    with open(os.path.join(current_directory, plate_dir, "dict_image_path_subwells.json"),
+              'w') as images_to_subwell_json:
+        json.dump(dict_image_path_subwells, images_to_subwell_json)
+
+    create_json(plate_dir=plate_dir, plate_id=plate_id, plate_temperature=plate_temperature,
+                dict_image_path_subwells=dict_image_path_subwells, debug=args.debug)
+
+    print("time to run: %s minutes" % str(int(ti.time() - t0) / 60))
 
 
 if __name__ == "__main__":
     main()
-    
