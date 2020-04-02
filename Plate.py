@@ -1,11 +1,11 @@
-import numpy as np
-import pandas as pd
-import string
 import itertools
 import math
+import string
+
+import pandas as pd
 
 
-class Plate():
+class Plate:
     def __init__(self, r, c, subwell_num):
         """
         General purpose plate lookup table. Converts a single number (Index) into a A01_1 format.
@@ -29,7 +29,6 @@ class Plate():
         """
         return str(self.matrix)
 
-
     def get_number_to_well_id(self, index):
         """
         Get well id (e.g. A01_1) from an Index (e.g. 1)
@@ -43,9 +42,13 @@ class Plate():
             row = well_location.index.values[0]
         else:
             raise LookupError("%d doesn't exist in the plate" % index)
-        return row+self.zero_format.format(int(col))+"_"+str(subcol)
+        return row + self.zero_format.format(int(col)) + "_" + str(subcol)
 
     def create_plate_matrix(self):
+        """
+        Creates Pandas DataFrame of a plate for looking up well_ids
+        @return: plate matrix
+        """
         cols = list(str(n) for n in list(range(1, self.col_num + 1)))
         if self.row_num > len(string.ascii_letters):
             rows = itertools.product(string.ascii_uppercase, repeat=self.row_num // 27 + 1)
@@ -55,8 +58,8 @@ class Plate():
 
         col_list = [[n] * self.subwell_num for n in cols]
         col_list_flat = []
-        for l in col_list:
-            for n in l:
+        for list_of_n in col_list:
+            for n in list_of_n:
                 col_list_flat.append(n)
 
         multi_index_col_well_subwell_tuples = list(
@@ -76,5 +79,3 @@ class Plate():
         return pd.DataFrame(well_ids_flat,
                             index=[c for c in rows],
                             columns=col_multindex)
-
-
