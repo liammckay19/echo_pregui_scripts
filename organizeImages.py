@@ -1,5 +1,5 @@
-import os
 import glob
+import os
 import subprocess
 
 from Plate import Plate
@@ -32,13 +32,13 @@ def organize_images(imageDirectory):
             newDirectory = os.path.join(imageDirectory, "organizedWells")
             try:
                 os.mkdir(newDirectory)
-            except:
+            except FileExistsError:
                 print(newDirectory, 'already exists. continuing')
 
             overview_img_dir = os.path.join(imageDirectory, "overview")
             try:
                 os.mkdir(overview_img_dir)
-            except:
+            except FileExistsError:
                 print(overview_img_dir, 'already exists. continuing')
 
             for path in sorted(glob.glob(os.path.join(imageDirectory, "batchID*", "*", "profileID_1", "*.jpg")),

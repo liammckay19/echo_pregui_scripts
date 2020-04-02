@@ -1,18 +1,19 @@
+import argparse
+import glob
+import os
 import subprocess
+import time
 
 import imutils
 import numpy as np
-import time
-import glob
-import os
-import argparse
-
 from cv2 import cv2
 from tqdm import tqdm
+
 from Plate import Plate
 
 PLATE = Plate(r=8, c=12, subwell_num=1)  # don't need to worry about subwell (that's specified in img path)
 COLOR_WHITE = (255, 255, 255)  # white - color
+
 
 def argparse_reader():
     """
@@ -25,23 +26,26 @@ def argparse_reader():
                         help='Shows images that well/drop were not found in analysis')
     return parser
 
-def save_overview_img(original_fp, imageDirectory):
+
+def save_overview_img(original_fp, output_directory):
     """
     Saves original overview image to its own folder
     @param original_fp: Overview image downloaded location 
-    @param imageDirectory: output directory
+    @param output_directory: output directory
     @return: Well_subwell ID (A01_2)
     """
     original_fp = os.path.abspath(original_fp)
     fp = original_fp.split(os.path.sep)
 
+    # noinspection PyTypeChecker
     well_num = "".join([(fp[x] if c == 0 else '') for x, c in
                         enumerate([s.find("well") for s in fp])])  # just gets the wellNum_## folder name
 
     subwell_number = fp[-1][1]
 
     well_id = PLATE.get_number_to_well_id(int(well_num.split("_")[1])).split("_")[0]
-    new_fp = os.path.join(imageDirectory, "overview", well_id + "_" + subwell_number + ".jpg")
+    # noinspection PyTypeChecker
+    new_fp = os.path.join(output_directory, "overview", well_id + "_" + str(subwell_number) + ".jpg")
 
     subprocess.run(["cp", original_fp, new_fp])
     return well_id + "_" + subwell_number
@@ -67,10 +71,10 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
     drop_ratio = zoom.shape[0] / float(zoom.shape[1])
     box_ratio = b_w / float(b_h)
 
-    ### The calcualtion for the alignment of the images is different depending on the ratio of the aspect ratios
+    # The calcualtion for the alignment of the images is different depending on the ratio of the aspect ratios
     if drop_ratio <= box_ratio:
-        ### X-axis based scaling
-        ### resize the drop image and calculate the alignemnt
+        # X-axis based scaling
+        # resize the drop image and calculate the alignemnt
         resize_ratio = box[2] / float(zoom.shape[1])
         new_w = int(np.round(zoom.shape[1] * resize_ratio))
         new_h = int(np.round(zoom.shape[0] * resize_ratio))
@@ -78,8 +82,8 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
         new_x = box[0]
         new_y = int(np.round(((box[3] - new_h) / 2) + box[1]))
     else:
-        ### Y-axis based scaling
-        ### resize the drop image and calculate the alignemnt
+        # Y-axis based scaling
+        # resize the drop image and calculate the alignemnt
         resize_ratio = box[3] / float(zoom.shape[0])
         new_w = int(np.round(zoom.shape[1] * resize_ratio))
         new_h = int(np.round(zoom.shape[0] * resize_ratio))
@@ -133,10 +137,11 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
         return overview_ef
 
 
-def find_image_features(image: np.ndarray, mask_color: bool = True, mask_color_min: np.array = None, mask_color_max: np.array() = None,
+def find_image_features(image: np.ndarray, mask_color: bool = True, mask_color_min: np.array = None,
+                        mask_color_max: np.array = None,
                         percent_arc_length: float = 0.1,
-                        bilateral: bool = False, CONTOUR_METHOD: int = cv2.CHAIN_APPROX_SIMPLE,
-                        RETREIVAL_METHOD: int = cv2.RETR_EXTERNAL,
+                        bilateral: bool = False, contour_method: int = cv2.CHAIN_APPROX_SIMPLE,
+                        retreival_method: int = cv2.RETR_EXTERNAL,
                         blur_image: bool = True, blur_iterations: int = 1, box: bool = False):
     """
     Analyze image for shapes and colors
@@ -146,8 +151,8 @@ def find_image_features(image: np.ndarray, mask_color: bool = True, mask_color_m
     @param mask_color_max: Max BGR values (blue, green, red)
     @param percent_arc_length: Contour sensitivity to hard turns
     @param bilateral: bool Use bilateral image filtering (very slow)
-    @param CONTOUR_METHOD: Use simple chain approximation or return all contours found (slower)
-    @param RETREIVAL_METHOD: Return a hierarchy of contours
+    @param contour_method: Use simple chain approximation or return all contours found (slower)
+    @param retreival_method: Return a hierarchy of contours
     @param blur_image: bool to blur image during contour finding (Gaussian)
     @param blur_iterations: Times to blur the image over on itself (Gaussian)
     @param box: bool return best fit box
@@ -185,15 +190,15 @@ def find_image_features(image: np.ndarray, mask_color: bool = True, mask_color_m
 
     _, thresh_blur_grey_thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY)
 
-    if RETREIVAL_METHOD == cv2.RETR_EXTERNAL:
+    if retreival_method == cv2.RETR_EXTERNAL:
         cnts = cv2.findContours(thresh_blur_grey_thresh, cv2.RETR_EXTERNAL,
-                                CONTOUR_METHOD)
+                                contour_method)
         cnts = imutils.grab_contours(cnts)
         hierarchy = []
     else:
-        cnts, hierarchy = cv2.findContours(thresh_blur_grey_thresh, RETREIVAL_METHOD, CONTOUR_METHOD)
+        cnts, hierarchy = cv2.findContours(thresh_blur_grey_thresh, retreival_method, contour_method)
 
-    boundRect = [None] * len(cnts)
+    bound_rect = [None] * len(cnts)
     contours_poly = [None] * len(cnts)
     biggest_area = 0
     box_with_biggest_area = 0
@@ -204,17 +209,17 @@ def find_image_features(image: np.ndarray, mask_color: bool = True, mask_color_m
             epsilon = percent_arc_length * cv2.arcLength(c, True)
 
         contours_poly[i] = cv2.approxPolyDP(c, epsilon, True)
-        boundRect[i] = cv2.boundingRect(contours_poly[i])
-        area = boundRect[i][2] * boundRect[i][3]
+        bound_rect[i] = cv2.boundingRect(contours_poly[i])
+        area = bound_rect[i][2] * bound_rect[i][3]
         if area > biggest_area:
             box_with_biggest_area = i
             biggest_area = area
-    if RETREIVAL_METHOD == cv2.RETR_EXTERNAL:
-        return cnts, boundRect, contours_poly, box_with_biggest_area
+    if retreival_method == cv2.RETR_EXTERNAL:
+        return cnts, bound_rect, contours_poly, box_with_biggest_area
     elif len(hierarchy) is not 0:
-        return cnts, hierarchy, boundRect, contours_poly, box_with_biggest_area
+        return cnts, hierarchy, bound_rect, contours_poly, box_with_biggest_area
     else:
-        return cnts, boundRect, contours_poly, box_with_biggest_area
+        return cnts, bound_rect, contours_poly, box_with_biggest_area
 
 
 def get_drop_location_box(overview_dl, mask_color_min, mask_color_max, debug=False):
@@ -226,15 +231,15 @@ def get_drop_location_box(overview_dl, mask_color_min, mask_color_max, debug=Fal
     @param debug: shows box found outlined in blue color
     @return:
     """
-    _, boundRect, _, box_with_biggest_area = find_image_features(overview_dl,
-                                                                 mask_color_min=mask_color_min,
-                                                                 mask_color_max=mask_color_max, blur_iterations=0,
-                                                                 box=True,
-                                                                 blur_image=True)
+    _, bound_rect, _, box_with_biggest_area = find_image_features(overview_dl,
+                                                                  mask_color_min=mask_color_min,
+                                                                  mask_color_max=mask_color_max, blur_iterations=0,
+                                                                  box=True,
+                                                                  blur_image=True)
     max_b = box_with_biggest_area
 
-    b_x, b_y, b_w, b_h = int(boundRect[max_b][0]), int(boundRect[max_b][1]), int(boundRect[max_b][2]), int(
-        boundRect[max_b][3])
+    b_x, b_y, b_w, b_h = int(bound_rect[max_b][0]), int(bound_rect[max_b][1]), int(bound_rect[max_b][2]), int(
+        bound_rect[max_b][3])
 
     xoffset = 0
     yoffset = 0
@@ -269,6 +274,7 @@ def find_biggest_contour(image, contours, max_area=None, min_area=100 ** 2, max_
 
     ''' Contour searching algorithm '''
     # find initial contour data
+    # noinspection PyPep8Naming
     M = cv2.moments(contours[-1])
     area = cv2.contourArea(contours[-1])
     cx = int(M['m10'] / M['m00'])
@@ -287,6 +293,7 @@ def find_biggest_contour(image, contours, max_area=None, min_area=100 ** 2, max_
         area = cv2.contourArea(contours[i])
 
         # find moments of contour
+        # noinspection PyPep8Naming
         M = cv2.moments(contours[i])
 
         # find center of mass of contour
@@ -317,7 +324,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
     @param debug: Show images during processing
     @return: overlayed image
     """
-    ### This is the main function of the script
+    # This is the main function of the script
 
     overview_dl = cv2.imread(overview_dl_fh)
     zoom = cv2.imread(zoom_fh)
@@ -352,8 +359,8 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
             # find contour points of mask
             cnts, hierarchy, _, _, _ = find_image_features(edges, mask_color=False, percent_arc_length=0.01,
                                                            bilateral=False,
-                                                           CONTOUR_METHOD=cv2.CHAIN_APPROX_NONE,
-                                                           RETREIVAL_METHOD=cv2.RETR_TREE)
+                                                           contour_method=cv2.CHAIN_APPROX_NONE,
+                                                           retreival_method=cv2.RETR_TREE)
 
             # create blank image for masking drop image
             black_white_mask = np.zeros((zoom_grey.shape[0], zoom_grey.shape[1]), np.uint8)
@@ -379,7 +386,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
                 # find contours of that mask (adds some smoothing)
                 cnts_mask, hierarchy_mask, _, _, _ = find_image_features(black_white_mask, mask_color=False,
                                                                          percent_arc_length=3,
-                                                                         RETREIVAL_METHOD=cv2.RETR_TREE,
+                                                                         retreival_method=cv2.RETR_TREE,
                                                                          bilateral=False, blur_image=True,
                                                                          blur_iterations=30)
 
@@ -405,26 +412,26 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
     return overview_ef
 
 
-def run(imageDirectory, circle=False, box=True, convex=False, debug=False):
+def run(output_directory, circle=False, box=True, convex=False, debug=False):
     """
     Overlay a directory of images
-    @param imageDirectory: output dir
+    @param output_directory: output dir
     @param circle: bool Shape circle cut out
     @param box: bool Shape box on zoom image
     @param convex: bool Shape convex cut out
     @param debug: Shows images during processing
     """
-    if not os.path.exists(imageDirectory):  # case 2: directory doesn't exist
-        print("Error: cannot find directory " + imageDirectory)
+    if not os.path.exists(output_directory):  # case 2: directory doesn't exist
+        print("Error: cannot find directory " + output_directory)
     else:
-        if not os.path.exists(os.path.join(imageDirectory, "overlayed")):
-            os.mkdir(os.path.join(imageDirectory, "overlayed"))
+        if not os.path.exists(os.path.join(output_directory, "overlayed")):
+            os.mkdir(os.path.join(output_directory, "overlayed"))
         print("overlaying images.\n")
-        completedWells = 0
-        well_folders = glob.glob(os.path.join(imageDirectory, 'organizedWells', 'wellNum_*'))
+        completed_wells = 0
+        well_folders = glob.glob(os.path.join(output_directory, 'organizedWells', 'wellNum_*'))
         for i in tqdm(range(1, len(well_folders) + 1)):
             filepaths = sorted(
-                glob.glob(os.path.join(imageDirectory, 'organizedWells', 'wellNum_' + str(i),
+                glob.glob(os.path.join(output_directory, 'organizedWells', 'wellNum_' + str(i),
                                        '*')))  # find all images in this well
             if len(filepaths) % 3 == 0:
                 for j in range(0, len(filepaths), 3):
@@ -433,19 +440,21 @@ def run(imageDirectory, circle=False, box=True, convex=False, debug=False):
                     ef_fh = filepaths[2 + j]
 
                     # save overview image (no drop location box) to overview folder
-                    well_name = save_overview_img(ef_fh, imageDirectory)
+                    well_name = save_overview_img(ef_fh, output_directory)
 
-                    output_fp = os.path.join(imageDirectory, "overlayed", well_name + ".jpg")
+                    # noinspection PyTypeChecker
+                    output_fp = os.path.join(output_directory, "overlayed", well_name + '.jpg')
 
                     try:
                         overlayed_img = overlay_images(dl_fh, ef_fh, zoom_ef_fh, output_fp, circle=circle, box=box,
                                                        convex=convex, debug=debug)
-                        completedWells += 1
+                        completed_wells += 1
                     except TypeError:
                         try:
                             raise RuntimeWarning(
                                 "wellNum_%d" % i +
-                                'error with overlay: Could not get bounding box from box_open.getbbox(). Image wasn\'t loaded')
+                                'error with overlay: Could not get bounding box from box_open.getbbox(). '
+                                'Image wasn\'t loaded')
                         except RuntimeWarning as e:
                             print(e)
                     except OSError:
@@ -461,21 +470,21 @@ def run(imageDirectory, circle=False, box=True, convex=False, debug=False):
                 except RuntimeWarning as e:
                     print(e)
 
-        ### show how many wells have an overlay
-        print("Completed images (should be 96 for 96 well):", completedWells)
+        # show how many wells have an overlay
+        print("Completed images (should be 96 for 96 well):", completed_wells)
 
 
 def main():
     """
     Run only overlay step. Overlay images in a directory with timing
     """
-    ### save the time to later see how long script took
+    # save the time to later see how long script took
     t0 = time.time()
 
     args = argparse_reader().parse_args()
-    imageDirectory = args.output_plate_folder
-    run(imageDirectory)
-    ### print the time it took to run the script
+    image_directory = args.output_plate_folder
+    run(image_directory)
+    # print the time it took to run the script
     print("time to run: %s" % (time.time() - t0))
 
 

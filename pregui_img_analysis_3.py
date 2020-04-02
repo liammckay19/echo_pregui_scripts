@@ -1,13 +1,13 @@
-import glob
-import numpy as np
-import os
-
-from datetime import datetime
-import time as ti
-import json
-from tqdm import tqdm
-import cv2
 import argparse
+import glob
+import json
+import os
+import time as ti
+from datetime import datetime
+
+import cv2
+import numpy as np
+from tqdm import tqdm
 
 
 def argparse_reader():
@@ -17,7 +17,8 @@ def argparse_reader():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('plateID', type=int,
-                        help='RockMaker Plate ID (4 or 5 digit code on barcode or 2nd number on RockMaker screen experiment file')
+                        help='RockMaker Plate ID (4 or 5 digit code on barcode or 2nd number on RockMaker screen '
+                             'experiment file')
     parser.add_argument('output_plate_folder', type=str, help='Output folder for images and json')
     parser.add_argument('plate_temp', type=int, help='Temperature of plate stored at')
     parser.add_argument('-json', '--generateJson', action='store_true',
@@ -68,10 +69,10 @@ def save_canny_save_fit(path, temp, debug=False):
     drop_circles = cv2.HoughCircles(image=image, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=135,
                                     maxRadius=145)
 
-    if int(temp) == 20:  ### This works well for echo RT plate type for rockmaker
+    if int(temp) == 20:  # This works well for echo RT plate type for rockmaker
         circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=475,
                                    maxRadius=495)
-    else:  ### This works well for echo 4C plate type for rockmaker
+    else:  # This works well for echo 4C plate type for rockmaker
         circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=459,
                                    maxRadius=475)
 
@@ -80,7 +81,7 @@ def save_canny_save_fit(path, temp, debug=False):
         circles = np.round(circles[0, :]).astype("int")
         cx_w, cy_w, radii_w = process_found_circles(circles)
         if debug:
-            cv2.circle(image, (cx_w, cx_y), radii_w, color=(255,0,0)) # blue
+            cv2.circle(image, (cx_w, cy_w), radii_w, color=(255, 0, 0))  # blue
             cv2.imshow("could not find drop, press key to continue", image)
             cv2.waitKey(0)
     else:
@@ -92,7 +93,7 @@ def save_canny_save_fit(path, temp, debug=False):
         drop_circles = np.round(drop_circles[0, :]).astype("int")
         cx_d, cy_d, radii_d = process_found_circles(drop_circles)
         if debug:
-            cv2.circle(image, (cx_d, cx_d), radii_d, color=(0,102,204)) # orange
+            cv2.circle(image, (cx_d, cx_d), radii_d, color=(0, 102, 204))  # orange
             cv2.imshow("could not find drop, press key to continue", image)
             cv2.waitKey(0)
     else:
@@ -143,10 +144,8 @@ def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_imag
     wellKeys = ["image_path", "well_id", "well_radius", "well_x", "well_y", "drop_radius", "drop_x", "drop_y",
                 "offset_x", "offset_y"]
 
-    ### Create json output dictionary
-    a = {}
-    a[plate_id] = {}
-    a[plate_id] = {key: 0 for key in plateKeys}
+    # Create json output dictionary
+    a = {plate_id: {key: 0 for key in plateKeys}}
     a[plate_id]["plate_id"] = plate_id
     a[plate_id]["date_time"] = datetime.now().isoformat(" ")
     a[plate_id]["temperature"] = plate_temperature
@@ -163,7 +162,8 @@ def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_imag
         if im_path:
             cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_overview,
                                                                            plate_temperature,
-                                                                           debug)  ### calling this function for 4c or 20c temp
+                                                                           debug)  # calling this function
+            # for 4c or 20c temp
         else:
             try:
                 raise FileNotFoundError("Well x,y,r will be zeros " + im_idx)
@@ -208,13 +208,13 @@ def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_imag
 
 def main():
     """
-    Run image analysis on a directory of images containing overlayed, overview, and batchID_#### folders
+    Run image analysis on a directory of images containing overlayed, overview, and batchID_## folders
     """
     current_directory = os.getcwd()
 
     args = argparse_reader().parse_args()
 
-    t0 = ti.time()  ### save time to know how long this script takes (this one takes longer than step 2)
+    t0 = ti.time()  # save time to know how long this script takes (this one takes longer than step 2)
 
     plate_dir = args.output_plate_folder
     plate_id = args.plateID
