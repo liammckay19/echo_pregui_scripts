@@ -1,10 +1,7 @@
-### Testing for the corect number of input arguments
-### 	expecting 1 arugment for PlateID
-
 import argparse
 import os
-from os.path import join, exists
 import subprocess  # runs bash commands in python
+from os.path import join, exists
 
 from tqdm import tqdm
 
@@ -16,7 +13,8 @@ def argparse_reader():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('plateID', type=int,
-                        help='RockMaker Plate ID (4 or 5 digit code on barcode or 2nd number on RockMaker screen experiment file')
+                        help='RockMaker Plate ID (4 or 5 digit code on barcode or 2nd number on RockMaker screen '
+                             'experiment file')
     parser.add_argument('output_plate_folder', type=str, help='Output folder for images and json')
     parser.add_argument('rock_drive_IP_address', type=str, help="IP addess of rock_drive storage (images)")
     return parser
@@ -26,7 +24,8 @@ def get_path_names_necessary(rsync_out, selected_batches=None):
     """
     Get unique list of path names from rsync file output
     @param rsync_out: rsync files matched output
-    @param selected_batches: Batches to use for downloading images (if not specified, find images starting at the last batch)
+    @param selected_batches: Batches to use for downloading images (if not specified, find images starting at the
+    last batch)
     @return:
     """
     image_names = set()
@@ -56,7 +55,7 @@ def sort_image_path_names(paths):
     overview_drop_location_paths = []
     overview_extended_focus_paths = []
     i = 1
-                                                                        # sort by image name
+    # sort by image name
     for path in list(sorted([line for line in paths], key=lambda line: line.split(os.sep)[-1])):
         if "ef.jpg" in path and i == 1:
             drop_images_paths.append(path)
@@ -104,8 +103,8 @@ def run(plateID, output_dir, rock_drive_ip):
         # batchID_drop = batches[0]  # first in list
         print("batch IDs selected: droplocation, dropimg: ", batches[0], batches[-1])
 
-        selected_batches = (batches[0], batches[-1])
-        # ### Create a list of files to transfer in a text file for rsync to transfer using the --files-from option
+        # selected_batches = (batches[0], batches[-1])
+        # Create a list of files to transfer in a text file for rsync to transfer using the --files-from option
 
         # get unique image names starting from the last image taken. Most recent images will be used.
         path_names_only_necessary = get_path_names_necessary(rsync_out)
