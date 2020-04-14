@@ -26,6 +26,28 @@ def argparse_reader_main():
                         help='Show images during process')
     return parser
 
+def run(rockimager_id, temperature, box=True, circle=False, convex=False, debug=False):
+    plateID_list = rockimager_id
+    output_dir = os.path.join(os.path.curdir(), "rockimager_images")
+    temperature = temperature
+    rock_drive_ip = "169.230.29.134"
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    for plateID in plateID_list:
+        output_dir = os.path.join(output_dir, str(plateID))
+        transfer_imgs(plateID, output_dir, rock_drive_ip)
+
+    for plateID in plateID_list:
+        output_dir = os.path.join(output_dir, str(plateID))
+        organize_images(output_dir)
+        rename_overview_images_well_id(output_dir)
+        bounding_box_overlay(output_dir, box=box, circle=circle, convex=convex,
+                             debug=debug)
+        img_well_dict = get_dict_image_to_well(output_dir)
+        create_json(plate_dir=output_dir, plate_id=plateID, plate_temperature=temperature,
+                    dict_image_path_subwells=img_well_dict)
 
 def main():
     args = argparse_reader_main().parse_args()
