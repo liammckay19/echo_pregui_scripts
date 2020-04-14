@@ -1,6 +1,7 @@
 
 # Echo Pregui Script
 For local use with hitsDB web application. 
+
 Author - Liam McKay (adapted from scripts from Justin Biel) 
 
 Stand-alone drop-image overlay and analysis tool for Formulatrix RockImager 1000 machine plate well images.
