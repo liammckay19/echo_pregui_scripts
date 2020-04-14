@@ -28,7 +28,7 @@ def organize_images(imageDirectory):
     """
     print("organizing images.")
     try:
-        if os.path.exists(os.path.join(".", imageDirectory)):
+        if os.path.exists(os.path.join(os.curdir, imageDirectory)):
             newDirectory = os.path.join(imageDirectory, "organizedWells")
             try:
                 os.mkdir(newDirectory)
