@@ -51,7 +51,7 @@ def save_overview_img(original_fp, output_directory):
     return well_id + "_" + subwell_number
 
 
-def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_mask_2=None):
+def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_mask_2=None, debug=False):
     """
     Overlay zoom image (with its mask) onto overview image at the location of the red bounding-box drop location
     @param b_x: top left X of box
@@ -130,7 +130,10 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
 
         # Put logo in ROI and modify the main image
         overlay = cv2.add(img1_bg, img2_fg)
-
+        if debug:
+            cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
+            cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
+            cv2.waitKey(0)
         return overlay
     else:
         print("not overlaying an image, drop location is the entire well (not accurate)")
@@ -339,6 +342,9 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
     light_red = np.array([69, 92, 255])
     b_x, b_y, b_w, b_h, img_is_normal_sized = get_drop_location_box(overview_dl, dark_red, light_red, debug=debug)
 
+    if debug:
+        print("b_x, b_y, b_w, b_h, img_is_normal_sized", b_x, b_y, b_w, b_h, img_is_normal_sized)
+
     if img_is_normal_sized:
         if circle or convex:
             # convert drop image to grey image
@@ -371,7 +377,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
                 (circle_x, circle_y, radius) = (int(circle_x), int(circle_y), int(radius))
                 circle_mask = np.zeros((zoom_grey.shape[0], zoom_grey.shape[1]), np.uint8)
                 cv2.circle(circle_mask, (circle_x, circle_y), radius, COLOR_WHITE, -1)
-                overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, circle_mask)
+                overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, circle_mask, debug=debug)
 
             elif convex:
                 # make convex shapes that fit biggest contour point set
@@ -402,9 +408,12 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
                 for i in range(len(hull)):
                     cv2.drawContours(black_white_mask_2, hull, i, COLOR_WHITE, -1, 8)
 
-                overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_mask_2)
+                overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_mask_2,
+                                                     debug=debug)
+        elif box:
+            overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, debug=debug)
     elif box:
-        overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef)
+        overview_ef = align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, debug=debug)
     else:
         overview_ef = overview_ef
 

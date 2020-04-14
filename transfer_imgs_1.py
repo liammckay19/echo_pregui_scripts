@@ -1,4 +1,5 @@
 import argparse
+import glob
 import os
 import subprocess  # runs bash commands in python
 from os.path import join, exists
@@ -68,6 +69,72 @@ def sort_image_path_names(paths):
     return drop_images_paths, overview_drop_location_paths, overview_extended_focus_paths
 
 
+def rsync_download(plateID, output_dir, rock_drive_ip):
+    rsync_log = ["rsync", "-nmav", "--include", "*/", "--exclude", "*_th.jpg", "--include", "*.jpg", "-e", "ssh",
+                 "xray@" + rock_drive_ip + ":/volume1/RockMakerStorage/WellImages/" + str(plateID)[
+                                                                                      2:] + '/plateID_' + str(
+                     plateID) + '/', str(output_dir) + '/']
+
+    print()
+    print(*rsync_log)
+    rsync = subprocess.run(rsync_log, capture_output=True)
+    rsync_out = rsync.stdout.decode("utf-8")
+    with open(join(output_dir, "log_rsync_init_file_list.txt"), 'w') as log_rsync_file_out:
+        log_rsync_file_out.write(rsync.stdout.decode("utf-8"))
+
+    # get all batches
+    batches = set()
+    with open(join(output_dir, "log_rsync_init_file_list.txt"), 'r', encoding='utf-8') as log_rsync_file:
+        for file in sorted(log_rsync_file.readlines()):
+            if 'batchID_' in file:
+                batches.add(int(
+                    file.split('batchID_')[1].split('wellNum')[0].replace("/", '').replace("\\", '').replace('n',
+                                                                                                             '')))
+    batches = sorted(list(batches))
+    # batchID_overview = batches[-1]  # last in list
+    # batchID_drop = batches[0]  # first in list
+    try:
+        print("batch IDs selected: droplocation, dropimg: ", batches[0], batches[-1])
+    except IndexError as e:
+        print(
+            "Could not load folders from RockImager NAS server. Could be authentication or public IP address issues."
+            "If using PyCharm, instead download using a terminal window; transfer_imgs_1.py line 97; ", e)
+        exit(1)
+
+    # selected_batches = (batches[0], batches[-1])
+    # Create a list of files to transfer in a text file for rsync to transfer using the --files-from option
+
+    # get unique image names starting from the last image taken. Most recent images will be used.
+    path_names_only_necessary = get_path_names_necessary(rsync_out)
+
+    drop_images_paths, overview_drop_location_paths, overview_extended_focus_paths = sort_image_path_names(
+        path_names_only_necessary)
+
+    print("drop image:", len(drop_images_paths), " images \noverview ef:", len(overview_extended_focus_paths),
+          " images \noverview drop location:", len(overview_drop_location_paths), "images")
+    with open(join(output_dir, "files_to_transfer.txt"), 'w') as files_to_transfer:
+        for path in tqdm([*drop_images_paths, *overview_drop_location_paths, *overview_extended_focus_paths]):
+            files_to_transfer.write(path + "\n")
+
+    rsync_download = [
+        "rsync", "-mav", "-P", "--files-from=" + output_dir + "/files_to_transfer.txt", "-e", "ssh",
+                               "xray@" + rock_drive_ip + ":" + join("/volume1",
+                                                                    "RockMakerStorage",
+                                                                    "WellImages",
+                                                                    str(plateID)[2:],
+                                                                    'plateID_' + str(plateID)),
+        join(str(output_dir), "")
+    ]
+    print()
+    print(*rsync_download)
+    rsync_stdout_download = subprocess.run(rsync_download, capture_output=True).stdout.decode("utf-8")
+    downloaded_files = 0
+    for line in rsync_stdout_download.split("\n"):
+        if ".jpg" in line:
+            downloaded_files += 1
+    print("Downloaded Files = ", downloaded_files, "(should be 288 = 96*3)")
+
+
 def run(plateID, output_dir, rock_drive_ip):
     """
     Transfer Rockimager images from NAS server using rsync
@@ -77,70 +144,18 @@ def run(plateID, output_dir, rock_drive_ip):
     """
     if not exists(join(output_dir)):
         os.mkdir(join(output_dir))
-
-        rsync_log = ["rsync", "-nmav", "--include", "*/", "--exclude", "*_th.jpg", "--include", "*.jpg", "-e", "ssh",
-                     "xray@" + rock_drive_ip + ":/volume1/RockMakerStorage/WellImages/" + str(plateID)[
-                                                                                          2:] + '/plateID_' + str(
-                         plateID) + '/', str(output_dir) + '/']
-
-        print()
-        print(*rsync_log)
-        rsync = subprocess.run(rsync_log, capture_output=True)
-        rsync_out = rsync.stdout.decode("utf-8")
-        with open(join(output_dir, "log_rsync_init_file_list.txt"), 'w') as log_rsync_file_out:
-            log_rsync_file_out.write(rsync.stdout.decode("utf-8"))
-
-        # get all batches
-        batches = set()
-        with open(join(output_dir, "log_rsync_init_file_list.txt"), 'r', encoding='utf-8') as log_rsync_file:
-            for file in sorted(log_rsync_file.readlines()):
-                if 'batchID_' in file:
-                    batches.add(int(
-                        file.split('batchID_')[1].split('wellNum')[0].replace("/", '').replace("\\", '').replace('n',
-                                                                                                                 '')))
-        batches = sorted(list(batches))
-        # batchID_overview = batches[-1]  # last in list
-        # batchID_drop = batches[0]  # first in list
-        print("batch IDs selected: droplocation, dropimg: ", batches[0], batches[-1])
-
-        # selected_batches = (batches[0], batches[-1])
-        # Create a list of files to transfer in a text file for rsync to transfer using the --files-from option
-
-        # get unique image names starting from the last image taken. Most recent images will be used.
-        path_names_only_necessary = get_path_names_necessary(rsync_out)
-
-        drop_images_paths, overview_drop_location_paths, overview_extended_focus_paths = sort_image_path_names(
-            path_names_only_necessary)
-
-        print("drop image:", len(drop_images_paths), " images \noverview ef:", len(overview_extended_focus_paths),
-              " images \noverview drop location:", len(overview_drop_location_paths), "images")
-        with open(join(output_dir, "files_to_transfer.txt"), 'w') as files_to_transfer:
-            for path in tqdm([*drop_images_paths, *overview_drop_location_paths, *overview_extended_focus_paths]):
-                files_to_transfer.write(path + "\n")
-
-        rsync_download = [
-            "rsync", "-mav", "-P", "--files-from=" + output_dir + "/files_to_transfer.txt", "-e", "ssh",
-                                   "xray@" + rock_drive_ip + ":" + join("/volume1",
-                                                                        "RockMakerStorage",
-                                                                        "WellImages",
-                                                                        str(plateID)[2:],
-                                                                        'plateID_' + str(plateID)),
-            join(str(output_dir), "")
-        ]
-        print()
-        print(*rsync_download)
-        rsync_stdout_download = subprocess.run(rsync_download, capture_output=True).stdout.decode("utf-8")
-        downloaded_files = 0
-        for line in rsync_stdout_download.split("\n"):
-            if ".jpg" in line:
-                downloaded_files += 1
-        print("Downloaded Files = ", downloaded_files, "(should be 288 = 96*3)")
+        rsync_download(plateID, output_dir, rock_drive_ip)
     else:
-        try:
-            raise RuntimeWarning("Using files from previous download in " + output_dir)
-        except RuntimeWarning as e:
-            print(e)
-            pass
+        # check if there are images in the output folder, if true reuse them
+        images_found = glob.glob(join(output_dir, "**", '*.jpg'))
+        if len(images_found) > 3:
+            try:
+                raise RuntimeWarning("Using files from previous download in " + output_dir)
+            except RuntimeWarning as e:
+                print(e)
+                pass
+        else:
+            rsync_download(plateID, output_dir, rock_drive_ip)
 
 
 def main():
