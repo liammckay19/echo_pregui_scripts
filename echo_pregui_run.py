@@ -1,5 +1,6 @@
 import argparse
 import os
+import subprocess
 
 from bounding_box_overlay_2 import run as bounding_box_overlay
 from organizeImages import organize_images, rename_overview_images_well_id
@@ -62,7 +63,8 @@ def main():
 
     for plateID in plateID_list:
         output_dir = os.path.join(args.output_plate_folder, str(plateID))
-        transfer_imgs(plateID, output_dir, rock_drive_ip)
+        subprocess.run(['bash', 'transfer_imgs.sh', str(plateID), str(output_dir)])
+        # transfer_imgs(plateID, output_dir, rock_drive_ip)
 
     for plateID in plateID_list:
         output_dir = os.path.join(args.output_plate_folder, str(plateID))

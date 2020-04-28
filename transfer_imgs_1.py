@@ -31,11 +31,11 @@ def get_path_names_necessary(rsync_out, selected_batches=None):
     """
     image_names = set()
     unique_paths = []
+    print(rsync_out)
     for line in sorted(rsync_out.split('\n'), reverse=True):
         if ".jpg" in line:
             batch = int(
-                line.split('batchID_')[1].split('wellNum')[0].replace(os.sep, '').replace("\\", '').replace('n',
-                                                                                                            ''))
+                line.split('batchID_')[1].split('wellNum')[0].replace(os.sep, '').replace('/','').replace('n', ''))
             jpg = line.split(os.sep)[-1]
             if jpg not in image_names:
                 unique_paths.append(line)
@@ -70,10 +70,12 @@ def sort_image_path_names(paths):
 
 
 def rsync_download(plateID, output_dir, rock_drive_ip):
-    rsync_log = ["rsync", "-nmav", "--include", "*/", "--exclude", "*_th.jpg", "--include", "*.jpg", "-e", "ssh",
-                 "xray@" + rock_drive_ip + ":/volume1/RockMakerStorage/WellImages/" + str(plateID)[
-                                                                                      2:] + '/plateID_' + str(
-                     plateID) + '/', str(output_dir) + '/']
+    rsync_log = ["rsync", "-azh", "--include", "/volume1/RockMakerStorage/WellImages/" + str(plateID)[
+                                                                                          2:] + '/plateID_' + str(
+        plateID) + '/', "--exclude", "*_th.jpg", "--include", "*.jpg", "-e", "ssh",
+                 "\'xray@" + rock_drive_ip + ":/volume1/RockMakerStorage/WellImages/" + str(plateID)[
+                                                                                        2:] + '/plateID_' + str(
+                     plateID) + '/', str(output_dir) + '/\'']
 
     print()
     print(*rsync_log)
@@ -117,13 +119,13 @@ def rsync_download(plateID, output_dir, rock_drive_ip):
             files_to_transfer.write(path + "\n")
 
     rsync_download = [
-        "rsync", "-mav", "-P", "--files-from=" + output_dir + "/files_to_transfer.txt", "-e", "ssh",
-                               "xray@" + rock_drive_ip + ":" + join("/volume1",
-                                                                    "RockMakerStorage",
-                                                                    "WellImages",
-                                                                    str(plateID)[2:],
-                                                                    'plateID_' + str(plateID)),
-        join(str(output_dir), "")
+        "rsync", "-mav", "-P", "--files-from=" + os.path.join(output_dir, "files_to_transfer.txt"), "-e", "ssh",  # quote for win
+                               "\'xray@" + rock_drive_ip + ":" + join(" ","volume1",
+                                                                      "RockMakerStorage",
+                                                                      "WellImages",
+                                                                      str(plateID)[2:],
+                                                                      'plateID_' + str(plateID)),
+        join(str(output_dir), ""), "\'"  # quote for windows
     ]
     print()
     print(*rsync_download)
