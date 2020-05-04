@@ -66,40 +66,48 @@ def save_canny_save_fit(path, temp, debug=False):
     ret, thresh = cv2.threshold(thresh, 0, 255, cv2.THRESH_BINARY)  # brightens grey to white TO ZERO threshold image
     edged = cv2.Canny(thresh, 101, 112)
 
-    drop_circles = cv2.HoughCircles(image=image, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=135,
+    drop_circles = cv2.HoughCircles(image=image, method=cv2.HOUGH_GRADIENT, dp=1, minDist=1, minRadius=135,
                                     maxRadius=145)
 
     if int(temp) == 20:  # This works well for echo RT plate type for rockmaker
         circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=475,
-                                   maxRadius=495)
+                                   maxRadius=580)
     else:  # This works well for echo 4C plate type for rockmaker
         circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=459,
-                                   maxRadius=475)
+                                   maxRadius=580)
 
     image = cv2.UMat(image)
     if circles is not None:
         circles = np.round(circles[0, :]).astype("int")
         cx_w, cy_w, radii_w = process_found_circles(circles)
         if debug:
-            cv2.circle(image, (cx_w, cy_w), radii_w, color=(255, 0, 0))  # blue
-            cv2.imshow("could not find drop, press key to continue", image)
+            cv2.circle(edged, (cx_w, cy_w), radii_w, color=(255, 0, 0), thickness=3)  # blue
+            cv2.imshow("well, press key to continue", edged)
+            cv2.imshow("well, press key to continue", edged)
             cv2.waitKey(0)
+            cv2.destroyAllWindows()
     else:
         if debug:
-            cv2.imshow("could not find well, press key to continue", np.concatenate([image, edged], axis=1))
+            cv2.imshow("could not find well, press key to continue", edged)
+            cv2.imshow("could not find well, press key to continue", edged)
             cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
     if drop_circles is not None:
         drop_circles = np.round(drop_circles[0, :]).astype("int")
         cx_d, cy_d, radii_d = process_found_circles(drop_circles)
         if debug:
-            cv2.circle(image, (cx_d, cx_d), radii_d, color=(0, 102, 204))  # orange
-            cv2.imshow("could not find drop, press key to continue", image)
+            cv2.circle(image, (cx_d, cx_d), radii_d, color=(0, 102, 204), thickness=3)  # orange
+            cv2.imshow("drop, press key to continue", image)
+            cv2.imshow("drop, press key to continue", image)
             cv2.waitKey(0)
+            cv2.destroyAllWindows()
     else:
         if debug:
             cv2.imshow("could not find drop, press key to continue", image)
+            cv2.imshow("could not find drop, press key to continue", image)
             cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
     return cx_d, cy_d, radii_d, cx_w, cy_w, radii_w
 
@@ -162,12 +170,13 @@ def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_imag
         if im_path:
             cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_overview,
                                                                            plate_temperature,
-                                                                           debug)  # calling this function
+                                                                           debug=debug)  # calling this function
             # for 4c or 20c temp
         else:
             try:
                 raise FileNotFoundError("Well x,y,r will be zeros " + im_idx)
-            except FileNotFoundError:
+            except FileNotFoundError as e:
+                print(e)
                 cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = [0, 0, 0, 0, 0, 0]  # time saving code (will output zeros)
 
         # radii radius of the drop circle

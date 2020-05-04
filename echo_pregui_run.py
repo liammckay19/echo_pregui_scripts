@@ -24,6 +24,8 @@ def argparse_reader_main():
                         help='Fits hole-punch circle of original drop images to drop location')
     parser.add_argument('-debug', '--debug', action='store_true', default=False,
                         help='Show images during process')
+    parser.add_argument('-drop', "--drop_image_number", type=int, help="Specify the batch number for drop image",
+                        required=False)
     return parser
 
 def run(rockimager_id, temperature, box=True, circle=False, convex=False, debug=False):
@@ -55,6 +57,7 @@ def main():
     plateID_list = args.plateID
     output_dir = args.output_plate_folder
     temperature = args.plate_temp
+    drop_image_number = args.drop_image_number
     rock_drive_ip = "169.230.29.134"
 
     if not os.path.exists(output_dir):
@@ -62,17 +65,19 @@ def main():
 
     for plateID in plateID_list:
         output_dir = os.path.join(args.output_plate_folder, str(plateID))
-        transfer_imgs(plateID, output_dir, rock_drive_ip)
+        transfer_imgs(plateID, output_dir, rock_drive_ip, drop_image_batch_number=drop_image_number)
 
     for plateID in plateID_list:
         output_dir = os.path.join(args.output_plate_folder, str(plateID))
         organize_images(output_dir)
         rename_overview_images_well_id(output_dir)
+        args.debug = False
         bounding_box_overlay(output_dir, box=args.box_overlay, circle=args.circle_overlay, convex=args.convex_overlay,
                              debug=args.debug)
         img_well_dict = get_dict_image_to_well(output_dir)
+        args.debug = True
         create_json(plate_dir=output_dir, plate_id=plateID, plate_temperature=temperature,
-                    dict_image_path_subwells=img_well_dict)
+                    dict_image_path_subwells=img_well_dict, debug=args.debug)
 
 
 if __name__ == '__main__':
