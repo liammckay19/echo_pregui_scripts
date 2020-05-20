@@ -2,6 +2,8 @@ import argparse
 import glob
 import json
 import os
+from typing import Tuple, Dict
+
 import time as ti
 from datetime import datetime
 
@@ -50,7 +52,8 @@ def process_found_circles(circles):
     return x, y, r
 
 
-def save_canny_save_fit(path, temp, debug=False):
+def save_canny_save_fit(path, temp, debug=False, minRadiusDrop=135, maxRadiusDrop=145, minRadiusWellRoomTemp=475,
+                        maxRadiusWellRoomTemp=580, minRadiusWellColdTemp=459, maxRadiusWellColdTemp=580):
     """
     Find location of well center, drop center on overview image. Averages and trims circles found to be more accurate
     @param path: overview file path
@@ -66,15 +69,17 @@ def save_canny_save_fit(path, temp, debug=False):
     ret, thresh = cv2.threshold(thresh, 0, 255, cv2.THRESH_BINARY)  # brightens grey to white TO ZERO threshold image
     edged = cv2.Canny(thresh, 101, 112)
 
-    drop_circles = cv2.HoughCircles(image=image, method=cv2.HOUGH_GRADIENT, dp=1, minDist=1, minRadius=135,
-                                    maxRadius=145)
+    drop_circles = cv2.HoughCircles(image=image, method=cv2.HOUGH_GRADIENT, dp=1, minDist=1, minRadius=minRadiusDrop,
+                                    maxRadius=maxRadiusDrop)
 
     if int(temp) == 20:  # This works well for echo RT plate type for rockmaker
-        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=475,
-                                   maxRadius=580)
+        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1,
+                                   minRadius=minRadiusWellRoomTemp,
+                                   maxRadius=maxRadiusWellRoomTemp)
     else:  # This works well for echo 4C plate type for rockmaker
-        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1, minRadius=459,
-                                   maxRadius=580)
+        circles = cv2.HoughCircles(image=edged, method=cv2.HOUGH_GRADIENT, dp=3, minDist=1,
+                                   minRadius=minRadiusWellColdTemp,
+                                   maxRadius=maxRadiusWellColdTemp)
 
     image = cv2.UMat(image)
     if circles is not None:
@@ -137,7 +142,9 @@ def get_dict_image_to_well(plate_dir):
 
 
 def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_image_path_subwells: dict,
-                debug=False) -> None:
+                debug=False, minRadiusDrop=135, maxRadiusDrop=145, minRadiusWellRoomTemp=475,
+                maxRadiusWellRoomTemp=580, minRadiusWellColdTemp=459, maxRadiusWellColdTemp=580) -> Tuple[
+    Dict[int, dict], str]:
     """
     Create pregui script json file
     @param plate_dir: output dir
@@ -170,7 +177,12 @@ def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_imag
         if im_path:
             cx_d, cy_d, radii_d, cx_w, cy_w, radii_w = save_canny_save_fit(im_overview,
                                                                            plate_temperature,
-                                                                           debug=debug)  # calling this function
+                                                                           debug=debug, minRadiusDrop=minRadiusDrop,
+                                                                           maxRadiusDrop=maxRadiusDrop,
+                                                                           minRadiusWellRoomTemp=minRadiusWellRoomTemp,
+                                                                           maxRadiusWellRoomTemp=maxRadiusWellRoomTemp,
+                                                                           minRadiusWellColdTemp=minRadiusWellColdTemp,
+                                                                           maxRadiusWellColdTemp=maxRadiusWellColdTemp)  # calling this function
             # for 4c or 20c temp
         else:
             try:
@@ -208,11 +220,13 @@ def create_json(plate_dir: str, plate_id: int, plate_temperature: int, dict_imag
 
     print("created:", os.path.join(current_directory, plate_dir,
                                    plate_dir.replace(os.path.join("a", "").replace("a", ""), '')) + '.json')
-    with open(os.path.join(current_directory, plate_dir,
-                           plate_dir.replace(os.path.join("a", "").replace("a", ""), '')) + '.json', 'w') as fp:
+    jsonPath = os.path.join(current_directory, plate_dir, str(plate_id) + "_" + str(plate_temperature)) + '.json'
 
+    with open(jsonPath, 'w') as fp:
         json.dump(a, fp)
     print('wrote to json')
+    jsonFile = a
+    return jsonFile, jsonPath
 
 
 def main():

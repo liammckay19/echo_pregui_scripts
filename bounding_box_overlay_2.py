@@ -313,7 +313,7 @@ def find_biggest_contour(image, contours, max_area=None, min_area=100 ** 2, max_
     return best_contour
 
 
-def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=False, box=True, convex=False,
+def roverlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=False, box=True, convex=False,
                    debug=False):
     """
     Overlay drop image in convex, circle or box shape on overview image from Rockimager
