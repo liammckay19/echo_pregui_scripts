@@ -70,11 +70,11 @@ def sort_image_path_names(paths):
 
 
 def rsync_download(plateID, output_dir, rock_drive_ip):
-    rsync_log = ["rsync", "-azh", "--include", "/volume1/RockMakerStorage/WellImages/" + str(plateID)[
-                                                                                          2:] + '/plateID_' + str(
+    rsync_log = ["rsync", "-azh", "--include", "/volume1/RockMakerStorage/WellImages/" + str(int(str(plateID)[
+                                                                                          2:])) + '/plateID_' + str(
         plateID) + '/', "--exclude", "*_th.jpg", "--include", "*.jpg", "-e", "ssh",
-                 "\'xray@" + rock_drive_ip + ":/volume1/RockMakerStorage/WellImages/" + str(plateID)[
-                                                                                        2:] + '/plateID_' + str(
+                 "\'xray@" + rock_drive_ip + ":/volume1/RockMakerStorage/WellImages/" + str(int(str(plateID)[
+                                                                                        2:])) + '/plateID_' + str(
                      plateID) + '/', str(output_dir) + '/\'']
 
     print()
@@ -82,7 +82,8 @@ def rsync_download(plateID, output_dir, rock_drive_ip):
     rsync = subprocess.run(rsync_log, capture_output=True)
     rsync_out = rsync.stdout.decode("utf-8")
     with open(join(output_dir, "log_rsync_init_file_list.txt"), 'w') as log_rsync_file_out:
-        log_rsync_file_out.write(rsync.stdout.decode("utf-8"))
+    	for line in rsync.stdout.decode("utf-8").split("\n"):
+        	log_rsync_file_out.write(line[line.find("batch"):]+"\n")
 
     # get all batches
     batches = set()
@@ -116,16 +117,16 @@ def rsync_download(plateID, output_dir, rock_drive_ip):
           " images \noverview drop location:", len(overview_drop_location_paths), "images")
     with open(join(output_dir, "files_to_transfer.txt"), 'w') as files_to_transfer:
         for path in tqdm([*drop_images_paths, *overview_drop_location_paths, *overview_extended_focus_paths]):
-            files_to_transfer.write(path + "\n")
+            files_to_transfer.write(path[path.find('batch'):] + "\n")
 
     rsync_download = [
-        "rsync", "-mav", "-P", "--files-from=" + os.path.join(output_dir, "files_to_transfer.txt"), "-e", "ssh",  # quote for win
-                               "\'xray@" + rock_drive_ip + ":" + join(" ","volume1",
+        "rsync", "-mav", "-P", "--files-from=" + os.path.join(output_dir, "files_to_transfer.txt"), "-e", "scp",  # quote for win
+                               "xray@" + rock_drive_ip + ":" + os.sep+join("volume1",
                                                                       "RockMakerStorage",
                                                                       "WellImages",
-                                                                      str(plateID)[2:],
+                                                                      str(int(str(plateID)[2:])),
                                                                       'plateID_' + str(plateID)),
-        join(str(output_dir), ""), "\'"  # quote for windows
+        join(str(output_dir), "")  # quote for windows
     ]
     print()
     print(*rsync_download)

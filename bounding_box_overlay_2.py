@@ -106,35 +106,39 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
 
     # if drop is a reasonable size
     if (drop.shape[0] + new_y, drop.shape[1] + new_x) <= (overview_ef.shape[0], overview_ef.shape[1]):
-        drop_grey = cv2.cvtColor(drop, cv2.COLOR_BGR2GRAY)
-        if len(overview_ef.shape) == 3:
-            overview_ef_grey = cv2.cvtColor(overview_ef, cv2.COLOR_BGR2GRAY)
-        else:
-            overview_ef_grey = overview_ef
+        try:
+            drop_grey = cv2.cvtColor(drop, cv2.COLOR_BGR2GRAY)
+            if len(overview_ef.shape) == 3:
+                overview_ef_grey = cv2.cvtColor(overview_ef, cv2.COLOR_BGR2GRAY)
+            else:
+                overview_ef_grey = overview_ef
 
-        overview_mask = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
-        zoom_overview_size = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
+            overview_mask = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
+            zoom_overview_size = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
 
-        # overview_mask = large mask
-        overview_mask[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_mask
-        mask_inv = cv2.bitwise_not(overview_mask)
+            # overview_mask = large mask
+            overview_mask[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_mask
+            mask_inv = cv2.bitwise_not(overview_mask)
 
-        # zoom picture on black bg
-        zoom_overview_size[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_grey
+            # zoom picture on black bg
+            zoom_overview_size[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_grey
 
-        # Now black-out the area of drop in overview_img
-        img1_bg = cv2.bitwise_and(overview_ef_grey, overview_ef_grey, mask=mask_inv)
+            # Now black-out the area of drop in overview_img
+            img1_bg = cv2.bitwise_and(overview_ef_grey, overview_ef_grey, mask=mask_inv)
 
-        # Take only region of logo from logo image.
-        img2_fg = cv2.bitwise_and(zoom_overview_size, zoom_overview_size, mask=overview_mask)
+            # Take only region of logo from logo image.
+            img2_fg = cv2.bitwise_and(zoom_overview_size, zoom_overview_size, mask=overview_mask)
 
-        # Put logo in ROI and modify the main image
-        overlay = cv2.add(img1_bg, img2_fg)
-        if debug:
-            cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
-            cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
-            cv2.waitKey(0)
-        return overlay
+            # Put logo in ROI and modify the main image
+            overlay = cv2.add(img1_bg, img2_fg)
+            if debug:
+                cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
+                cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
+                cv2.waitKey(0)
+            return overlay
+        except ValueError:
+            print("not overlaying an image, image pixel dimension error")
+            return overview_ef
     else:
         print("not overlaying an image, drop location is the entire well (not accurate)")
         return overview_ef
@@ -419,6 +423,60 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
 
     cv2.imwrite(output_fh, overview_ef)
     return overview_ef
+
+def save_overview_imgs(output_directory):
+    if not os.path.exists(output_directory):  # case 2: directory doesn't exist
+        print("Error: cannot find directory " + output_directory)
+    else:
+        if not os.path.exists(os.path.join(output_directory, "overlayed")):
+            os.mkdir(os.path.join(output_directory, "overlayed"))
+        print("overlaying images.\n")
+        completed_wells = 0
+        well_folders = glob.glob(os.path.join(output_directory, 'organizedWells', 'wellNum_*'))
+        for i in tqdm(range(1, len(well_folders) + 1)):
+            filepaths = sorted(
+                glob.glob(os.path.join(output_directory, 'organizedWells', 'wellNum_' + str(i),
+                                       '*')))  # find all images in this well
+            if len(filepaths) % 3 == 0:
+                for j in range(0, len(filepaths), 3):
+                    zoom_ef_fh = filepaths[0 + j]
+                    dl_fh = filepaths[1 + j]
+                    ef_fh = filepaths[2 + j]
+
+                    # save overview image (no drop location box) to overview folder
+                    well_name = save_overview_img(ef_fh, output_directory)
+
+                    # noinspection PyTypeChecker
+                    output_fp = os.path.join(output_directory, "overlayed", well_name + '.jpg')
+
+                    try:
+                        overlayed_img = overlay_images(dl_fh, ef_fh, zoom_ef_fh, output_fp, circle=False, box=False,
+                                                       convex=False, debug=False)
+                        completed_wells += 1
+                    except TypeError:
+                        try:
+                            raise RuntimeWarning(
+                                "wellNum_%d" % i +
+                                'error with overlay: Could not get bounding box from box_open.getbbox(). '
+                                'Image wasn\'t loaded')
+                        except RuntimeWarning as e:
+                            print(e)
+                    except OSError:
+                        try:
+                            raise RuntimeWarning("wellNum_%d Could not open image file" % i)
+                        except RuntimeWarning as e:
+                            print(e)
+
+            else:
+                try:
+                    raise RuntimeWarning("\nwellNum_" + str(
+                        i) + " does not have the 3 required images for bounding box overlay. Continuing...")
+                except RuntimeWarning as e:
+                    print(e)
+
+        # show how many wells have an overlay
+        print("Completed images (should be 96 for 96 well):", completed_wells)
+
 
 
 def run(output_directory, circle=False, box=True, convex=False, debug=False):

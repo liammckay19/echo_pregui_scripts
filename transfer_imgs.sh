@@ -10,11 +10,13 @@ fi
 plateID=$1
 output_dir=$2
 
+well_folder=$(echo ${plateID: -3} | sed 's/^0*//')
+
 ### Make output directory
 mkdir -p "${output_dir}/overlay"
 
 ### Run rsync to grab all non-thumbnail image paths and store in file
-rsync -nmav --rsync-path "/bin/rsync" --include "*/" --exclude "*_th.jpg" --include "*.jpg" xray@169.230.29.134:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}/" ${output_dir}/ > ${output_dir}/log_rsync_init_file_list.txt
+rsync -nmav --rsync-path "/bin/rsync" --include "*/" --exclude "*_th.jpg" --include "*.jpg" xray@169.230.29.134:"/volume1/RockMakerStorage/WellImages/${well_folder}/plateID_${plateID}/" ${output_dir}/ > ${output_dir}/log_rsync_init_file_list.txt
 
 ### grab first and last batch IDs from rsync path list
 batchID_overview=`grep ".jpg" ${output_dir}/log_rsync_init_file_list.txt | awk -F "batchID_|/wellNum" '{print $2}' | sort | uniq | head -n 1`
@@ -33,4 +35,4 @@ cat ${output_dir}/log_rsync_init_file_list.txt | grep "${batchID_overview}" | gr
 echo ${plateID} > ${output_dir}/plateid.txt
 
 ### transfer files using rsync
-rsync -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@169.230.29.134:"/volume1/RockMakerStorage/WellImages/${plateID: -3}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt
+rsync -mav --rsync-path "/bin/rsync" --files-from=${output_dir}/files_to_transfer.txt xray@169.230.29.134:"/volume1/RockMakerStorage/WellImages/${well_folder}/plateID_${plateID}" ${output_dir}/ > ${output_dir}/log_rsync_transferred.txt

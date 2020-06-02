@@ -3,6 +3,7 @@ import os
 import subprocess
 
 from bounding_box_overlay_2 import run as bounding_box_overlay
+from bounding_box_overlay_2 import save_overview_imgs 
 from organizeImages import organize_images, rename_overview_images_well_id
 from pregui_img_analysis_3 import get_dict_image_to_well, create_json
 from transfer_imgs_1 import run as transfer_imgs
@@ -25,6 +26,7 @@ def argparse_reader_main():
                         help='Fits hole-punch circle of original drop images to drop location')
     parser.add_argument('-debug', '--debug', action='store_true', default=False,
                         help='Show images during process')
+    parser.add_argument("-nooverlay", '--nooverlay', action='store_true', default=False, help='bypass overlaying images')
     return parser
 
 def run(rockimager_id, temperature, box=True, circle=False, convex=False, debug=False):
@@ -56,6 +58,7 @@ def main():
     plateID_list = args.plateID
     output_dir = args.output_plate_folder
     temperature = args.plate_temp
+    no_overlay = args.nooverlay
     rock_drive_ip = "169.230.29.134"
 
     if not os.path.exists(output_dir):
@@ -70,7 +73,10 @@ def main():
         output_dir = os.path.join(args.output_plate_folder, str(plateID))
         organize_images(output_dir)
         rename_overview_images_well_id(output_dir)
-        bounding_box_overlay(output_dir, box=args.box_overlay, circle=args.circle_overlay, convex=args.convex_overlay,
+        if no_overlay:
+            save_overview_imgs(output_dir)
+        else:
+            bounding_box_overlay(output_dir, box=args.box_overlay, circle=args.circle_overlay, convex=args.convex_overlay,
                              debug=args.debug)
         img_well_dict = get_dict_image_to_well(output_dir)
         create_json(plate_dir=output_dir, plate_id=plateID, plate_temperature=temperature,
