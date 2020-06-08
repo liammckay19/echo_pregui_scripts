@@ -2,10 +2,10 @@ import argparse
 import glob
 import os
 import subprocess
-import time
 
 import imutils
 import numpy as np
+import time
 from cv2 import cv2
 from tqdm import tqdm
 
@@ -68,8 +68,8 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
             np.zeros((zoom.shape[0], zoom.shape[1]), np.uint8))  # make white box zoom size
     box = [b_x, b_y, b_w, b_h]
 
-    drop_ratio = zoom.shape[0] / float(zoom.shape[1])
-    box_ratio = b_w / float(b_h)
+    drop_ratio = zoom.shape[1] / float(zoom.shape[0])
+    box_ratio = b_h / float(b_w)
 
     # The calcualtion for the alignment of the images is different depending on the ratio of the aspect ratios
     if drop_ratio <= box_ratio:
@@ -97,12 +97,22 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
     yscale = new_h
 
     # resize drop image and its mask (mask- for convex or circle overlay)
-    if (xscale, yscale) > (0, 0):
-        drop = cv2.resize(zoom, (xscale, yscale), interpolation=cv2.INTER_AREA)
-        drop_mask = cv2.resize(black_white_mask_2, (xscale, yscale), interpolation=cv2.INTER_AREA)
-    else:
-        drop = cv2.resize(zoom, (cols // 2, rows // 2), interpolation=cv2.INTER_AREA)
-        drop_mask = cv2.resize(black_white_mask_2, (cols // 2, rows // 2), interpolation=cv2.INTER_AREA)
+    drop = cv2.bitwise_not(np.zeros((xscale, yscale), np.uint8))
+    drop_mask = cv2.bitwise_not(np.zeros((xscale, yscale), np.uint8))
+    cv2.imshow('before', np.concatenate([drop, drop_mask]))
+    cv2.imshow('before', np.concatenate([drop, drop_mask]))
+    # if (xscale, yscale) > (0, 0):
+    drop = cv2.resize(zoom, (xscale, yscale), interpolation=cv2.INTER_AREA)
+    drop_mask = cv2.resize(black_white_mask_2, (xscale, yscale), interpolation=cv2.INTER_AREA)
+    # else:
+    #     drop = cv2.resize(zoom, (cols // 2, rows // 2), interpolation=cv2.INTER_AREA)
+    #     drop_mask = cv2.resize(black_white_mask_2, (cols // 2, rows // 2), interpolation=cv2.INTER_AREA)
+    cv2.waitKey(0)
+    drop_mask = cv2.cvtColor(drop_mask, cv2.COLOR_GRAY2BGR)
+    cv2.imshow('after', np.concatenate([drop, drop_mask]))
+    cv2.imshow('after', np.concatenate([drop, drop_mask]))
+    cv2.waitKey(0)
+    drop_mask = cv2.cvtColor(drop_mask, cv2.COLOR_BGR2GRAY)
 
     # if drop is a reasonable size
     if (drop.shape[0] + new_y, drop.shape[1] + new_x) <= (overview_ef.shape[0], overview_ef.shape[1]):
@@ -131,8 +141,15 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
         # Put logo in ROI and modify the main image
         overlay = cv2.add(img1_bg, img2_fg)
         if debug:
-            cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
-            cv2.imshow('overlay', np.concatenate([overlay, overview_mask, mask_inv]))
+            # overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2RGB)
+            # overview_mask = cv2.cvtColor(overview_mask, cv2.COLOR_GRAY2RGB)
+            # overview_ef = cv2.cvtColor(overview_ef, cv2.COLOR_GRAY2RGB)
+            cv2.rectangle(overview_ef, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0), 3)
+            cv2.imshow('overlay', overview_ef)
+            cv2.waitKey(0)
+            cv2.imshow('overlay', overview_mask)
+            cv2.waitKey(0)
+            cv2.imshow('overlay', overlay)
             cv2.waitKey(0)
         return overlay
     else:
@@ -140,12 +157,12 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
         return overview_ef
 
 
-def find_image_features(image: np.ndarray, mask_color: bool = True, mask_color_min: np.array = None,
-                        mask_color_max: np.array = None,
-                        percent_arc_length: float = 0.1,
-                        bilateral: bool = False, contour_method: int = cv2.CHAIN_APPROX_SIMPLE,
-                        retreival_method: int = cv2.RETR_EXTERNAL,
-                        blur_image: bool = True, blur_iterations: int = 1, box: bool = False):
+def find_image_features(image, mask_color=True, mask_color_min=None,
+                        mask_color_max=None,
+                        percent_arc_length=0.1,
+                        bilateral=False, contour_method=cv2.CHAIN_APPROX_SIMPLE,
+                        retreival_method=cv2.RETR_EXTERNAL,
+                        blur_image=True, blur_iterations=1, box=False):
     """
     Analyze image for shapes and colors
     @param image: cv2 numpy array image
@@ -313,7 +330,7 @@ def find_biggest_contour(image, contours, max_area=None, min_area=100 ** 2, max_
     return best_contour
 
 
-def roverlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=False, box=True, convex=False,
+def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=False, box=True, convex=False,
                    debug=False):
     """
     Overlay drop image in convex, circle or box shape on overview image from Rockimager
@@ -345,6 +362,7 @@ def roverlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=F
     if debug:
         print("b_x, b_y, b_w, b_h, img_is_normal_sized", b_x, b_y, b_w, b_h, img_is_normal_sized)
 
+    img_is_normal_sized = True  # always fits no matter what
     if img_is_normal_sized:
         if circle or convex:
             # convert drop image to grey image
