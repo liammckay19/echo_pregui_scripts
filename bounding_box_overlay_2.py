@@ -394,8 +394,10 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
         cv2.imshow("dl, ef, zoom Press Any Key to Close", np.concatenate([overview_dl, overview_ef, zoom]))
         cv2.imshow("dl, ef, zoom Press Any Key to Close", np.concatenate([overview_dl, overview_ef, zoom]))
 
+    # dark_red = np.array([0, 2, 57]) changed jun 9 2020
+    # light_red = np.array([69, 92, 255])
     dark_red = np.array([0, 2, 57])
-    light_red = np.array([69, 92, 255])
+    light_red = np.array([100, 92, 255])
     b_x, b_y, b_w, b_h, img_is_normal_sized = get_drop_location_box(overview_dl, dark_red, light_red, debug=debug)
 
     if debug:
