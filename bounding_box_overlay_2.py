@@ -69,7 +69,7 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
     box = [b_x, b_y, b_w, b_h]
 
     drop_ratio = zoom.shape[1] / float(zoom.shape[0])
-    box_ratio = b_h / float(b_w)
+    box_ratio = b_w / float(b_h)
 
     # The calcualtion for the alignment of the images is different depending on the ratio of the aspect ratios
     if drop_ratio <= box_ratio:
@@ -99,72 +99,95 @@ def align_drop_to_overview(b_x, b_y, b_w, b_h, zoom, overview_ef, black_white_ma
     # resize drop image and its mask (mask- for convex or circle overlay)
     drop = cv2.bitwise_not(np.zeros((xscale, yscale), np.uint8))
     drop_mask = cv2.bitwise_not(np.zeros((xscale, yscale), np.uint8))
-    cv2.imshow('before', np.concatenate([drop, drop_mask]))
-    cv2.imshow('before', np.concatenate([drop, drop_mask]))
-    # if (xscale, yscale) > (0, 0):
     drop = cv2.resize(zoom, (xscale, yscale), interpolation=cv2.INTER_AREA)
     drop_mask = cv2.resize(black_white_mask_2, (xscale, yscale), interpolation=cv2.INTER_AREA)
     # else:
     #     drop = cv2.resize(zoom, (cols // 2, rows // 2), interpolation=cv2.INTER_AREA)
     #     drop_mask = cv2.resize(black_white_mask_2, (cols // 2, rows // 2), interpolation=cv2.INTER_AREA)
-    cv2.waitKey(0)
-    drop_mask = cv2.cvtColor(drop_mask, cv2.COLOR_GRAY2BGR)
-    cv2.imshow('after', np.concatenate([drop, drop_mask]))
-    cv2.imshow('after', np.concatenate([drop, drop_mask]))
-    cv2.waitKey(0)
-    drop_mask = cv2.cvtColor(drop_mask, cv2.COLOR_BGR2GRAY)
+    #
+    # drop_mask = cv2.cvtColor(drop_mask, cv2.COLOR_GRAY2BGR)
+    # cv2.imshow('drop and drop mask', np.concatenate([drop, drop_mask]))
+    # cv2.imshow('drop and drop mask', np.concatenate([drop, drop_mask]))
+    #
+    # drop_mask = cv2.cvtColor(drop_mask, cv2.COLOR_BGR2GRAY)
 
     # if drop is a reasonable size
-    if (drop.shape[0] + new_y, drop.shape[1] + new_x) <= (overview_ef.shape[0], overview_ef.shape[1]):
-        drop_grey = cv2.cvtColor(drop, cv2.COLOR_BGR2GRAY)
-        if len(overview_ef.shape) == 3:
-            overview_ef_grey = cv2.cvtColor(overview_ef, cv2.COLOR_BGR2GRAY)
-        else:
-            overview_ef_grey = overview_ef
+    # if (drop.shape[0] + new_y) <= overview_ef.shape[0] and (drop.shape[1] + new_x) <= overview_ef.shape[1]:
+    drop_grey = cv2.cvtColor(drop, cv2.COLOR_BGR2GRAY)
+    if len(overview_ef.shape) == 3:
+        overview_ef_grey = cv2.cvtColor(overview_ef, cv2.COLOR_BGR2GRAY)
+    else:
+        overview_ef_grey = overview_ef
 
-        overview_mask = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
-        zoom_overview_size = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
+    overview_mask = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
+    zoom_overview_size = np.zeros((overview_ef_grey.shape[0], overview_ef.shape[1]), np.uint8)
 
-        # overview_mask = large mask
+    # overview_mask = large mask
+    original_shape_overview_ef = overview_ef.shape
+    original_shape_overview_mask = overview_mask.shape
+    original_shape_zoom_overview_size = zoom_overview_size.shape
+
+    if (drop.shape[0] + new_y) <= overview_ef.shape[0] and (drop.shape[1] + new_x) <= overview_ef.shape[1]:
         overview_mask[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_mask
         mask_inv = cv2.bitwise_not(overview_mask)
-
-        # zoom picture on black bg
-        zoom_overview_size[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_grey
-
-        # Now black-out the area of drop in overview_img
-        img1_bg = cv2.bitwise_and(overview_ef_grey, overview_ef_grey, mask=mask_inv)
-
-        # Take only region of logo from logo image.
-        img2_fg = cv2.bitwise_and(zoom_overview_size, zoom_overview_size, mask=overview_mask)
-
-        # Put logo in ROI and modify the main image
-        overlay = cv2.add(img1_bg, img2_fg)
-        if debug:
-            # overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2RGB)
-            # overview_mask = cv2.cvtColor(overview_mask, cv2.COLOR_GRAY2RGB)
-            # overview_ef = cv2.cvtColor(overview_ef, cv2.COLOR_GRAY2RGB)
-            cv2.rectangle(overview_ef, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0), 3)
-            cv2.imshow('overlay', overview_ef)
-            cv2.waitKey(0)
-            cv2.imshow('overlay', overview_mask)
-            cv2.waitKey(0)
-            cv2.imshow('overlay', overlay)
-            cv2.waitKey(0)
-        return overlay
     else:
-        print("not overlaying an image, drop location is the entire well (not accurate)")
-        return overview_ef
+        # create a larger image for overlaying
+        overview_ef = cv2.cvtColor(overview_ef, cv2.COLOR_BGR2GRAY)
+        new_larger_image = np.zeros((drop.shape[0] + new_w, drop.shape[1] + new_h), np.uint8)
+        overview_mask = np.zeros((drop.shape[0] + new_w, drop.shape[1] + new_h), np.uint8)
+        zoom_overview_size = np.zeros((drop.shape[0] + new_w, drop.shape[1] + new_h), np.uint8)
+        new_overviewef_image = np.zeros((drop.shape[0] + new_w, drop.shape[1] + new_h), np.uint8)
+
+        # use larger canvas to create image masks and overlays
+        new_larger_image[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_mask
+        mask_inv = cv2.bitwise_not(new_larger_image)
+        new_overviewef_image[0:overview_ef.shape[0], 0:overview_ef.shape[1]] = overview_ef
+        overview_ef_grey = new_overviewef_image
+        overview_mask[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_mask
+
+    # zoom picture on black bg
+    zoom_overview_size[new_y:new_y + drop.shape[0], new_x:new_x + drop.shape[1]] = drop_grey
+
+    # Now black-out the area of drop in overview_img
+    img1_bg = cv2.bitwise_and(overview_ef_grey, overview_ef_grey, mask=mask_inv)
+
+    # Take only region of logo from logo image.
+    img2_fg = cv2.bitwise_and(zoom_overview_size, zoom_overview_size, mask=overview_mask)
+    if debug:
+        cv2.imshow("img_bg,mask", np.concatenate([img1_bg, mask_inv, img2_fg, overview_mask]))
+        cv2.imshow("img_bg,mask", np.concatenate([img1_bg, mask_inv, img2_fg, overview_mask]))
+
+    # Put logo in ROI and modify the main image
+    overlay = cv2.add(img1_bg, img2_fg)
+    overlay = overlay[0:original_shape_overview_ef[0], 0:original_shape_overview_ef[1]]
+    if debug:
+        # overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2RGB)
+        # overview_mask = cv2.cvtColor(overview_mask, cv2.COLOR_GRAY2RGB)
+        # overview_ef = cv2.cvtColor(overview_ef, cv2.COLOR_GRAY2RGB)
+        cv2.rectangle(overview_ef, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0), 3)
+        cv2.imshow('overlay', overview_ef)
+
+        cv2.imshow('overlay', overview_mask)
+
+        cv2.imshow('overlay', overlay)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    return overlay
+    # else:
+    #     print("not overlaying an image, drop location is the entire well (not accurate)")
+    #     return overview_ef
 
 
+# noinspection PyUnresolvedReferences
 def find_image_features(image, mask_color=True, mask_color_min=None,
                         mask_color_max=None,
                         percent_arc_length=0.1,
                         bilateral=False, contour_method=cv2.CHAIN_APPROX_SIMPLE,
                         retreival_method=cv2.RETR_EXTERNAL,
-                        blur_image=True, blur_iterations=1, box=False):
+                        blur_image=True, blur_iterations=1, box=False, debug=False):
     """
     Analyze image for shapes and colors
+    @param debug: show images during processing
     @param image: cv2 numpy array image
     @param mask_color: bool look for a color
     @param mask_color_min: Min BGR values (blue, green, red)
@@ -186,6 +209,11 @@ def find_image_features(image, mask_color=True, mask_color_min=None,
         # mask = low red [0, 2, 57], light red [69, 92, 255]
         mask = cv2.inRange(image, mask_color_min, mask_color_max)
         output = cv2.bitwise_and(image, image, mask=mask)
+        if debug:
+            cv2.imshow("color channel mask" + str(mask_color_min) + str(mask_color_max), output)
+            cv2.imshow("color channel mask" + str(mask_color_min) + str(mask_color_max), output)
+
+
     else:
         output = image
 
@@ -209,6 +237,9 @@ def find_image_features(image, mask_color=True, mask_color_min=None,
             blurred = cv2.GaussianBlur(blurred, (5, 5), 1)
 
     _, thresh_blur_grey_thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY)
+    if debug:
+        cv2.imshow("thresh_blur_grey_thresh", thresh_blur_grey_thresh)
+        cv2.imshow("thresh_blur_grey_thresh", thresh_blur_grey_thresh)
 
     if retreival_method == cv2.RETR_EXTERNAL:
         cnts = cv2.findContours(thresh_blur_grey_thresh, cv2.RETR_EXTERNAL,
@@ -234,6 +265,15 @@ def find_image_features(image, mask_color=True, mask_color_min=None,
         if area > biggest_area:
             box_with_biggest_area = i
             biggest_area = area
+    if debug:
+        thresh_blur_grey_thresh = cv2.cvtColor(thresh_blur_grey_thresh, cv2.COLOR_GRAY2BGR)
+        # noinspection PyTupleAssignmentBalance
+        x, y, w, h = bound_rect[box_with_biggest_area]
+        cv2.rectangle(thresh_blur_grey_thresh, pt1=(x, y), pt2=(x + w, y + h), color=(0, 255, 0), thickness=3)
+        cv2.imshow("thresh_blur_grey_thresh", thresh_blur_grey_thresh)
+        cv2.imshow("thresh_blur_grey_thresh", thresh_blur_grey_thresh)
+        cv2.waitKey(0)
+
     if retreival_method == cv2.RETR_EXTERNAL:
         return cnts, bound_rect, contours_poly, box_with_biggest_area
     elif len(hierarchy) is not 0:
@@ -255,7 +295,7 @@ def get_drop_location_box(overview_dl, mask_color_min, mask_color_max, debug=Fal
                                                                   mask_color_min=mask_color_min,
                                                                   mask_color_max=mask_color_max, blur_iterations=0,
                                                                   box=True,
-                                                                  blur_image=True)
+                                                                  blur_image=True, debug=debug)
     max_b = box_with_biggest_area
 
     b_x, b_y, b_w, b_h = int(bound_rect[max_b][0]), int(bound_rect[max_b][1]), int(bound_rect[max_b][2]), int(
@@ -263,16 +303,15 @@ def get_drop_location_box(overview_dl, mask_color_min, mask_color_max, debug=Fal
 
     xoffset = 0
     yoffset = 0
-    woffset = 6
-    hoffset = 6
+    woffset = 0
+    hoffset = 0
     b_x, b_y, b_w, b_h = b_x + xoffset, b_y + yoffset, b_w - xoffset + woffset, b_h - yoffset + hoffset
-    if b_w <= 500 and b_h <= 500:
+    if b_w >= 250 and b_h >= 250:  # if DL is big enough to perform circle or convex
         if debug:
             cv2.rectangle(overview_dl, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0), 3)
             cv2.imshow('dl', overview_dl)
             cv2.imshow('dl', overview_dl)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+
         return b_x, b_y, b_w, b_h, True
     else:
         # make these half x or half y whichever is bigger (above 500)
@@ -345,7 +384,8 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
     @return: overlayed image
     """
     # This is the main function of the script
-
+    if debug:
+        print("dl,zoom,ef", overview_dl_fh, zoom_fh, overview_ef_fh)
     overview_dl = cv2.imread(overview_dl_fh)
     zoom = cv2.imread(zoom_fh)
     overview_ef = cv2.imread(overview_ef_fh)
@@ -353,7 +393,6 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
     if debug:
         cv2.imshow("dl, ef, zoom Press Any Key to Close", np.concatenate([overview_dl, overview_ef, zoom]))
         cv2.imshow("dl, ef, zoom Press Any Key to Close", np.concatenate([overview_dl, overview_ef, zoom]))
-        cv2.waitKey(0)
 
     dark_red = np.array([0, 2, 57])
     light_red = np.array([69, 92, 255])
@@ -362,7 +401,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
     if debug:
         print("b_x, b_y, b_w, b_h, img_is_normal_sized", b_x, b_y, b_w, b_h, img_is_normal_sized)
 
-    img_is_normal_sized = True  # always fits no matter what
+    # img_is_normal_sized = True  # always circle/convex no matter what
     if img_is_normal_sized:
         if circle or convex:
             # convert drop image to grey image
@@ -384,7 +423,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
             cnts, hierarchy, _, _, _ = find_image_features(edges, mask_color=False, percent_arc_length=0.01,
                                                            bilateral=False,
                                                            contour_method=cv2.CHAIN_APPROX_NONE,
-                                                           retreival_method=cv2.RETR_TREE)
+                                                           retreival_method=cv2.RETR_TREE, debug=debug)
 
             # create blank image for masking drop image
             black_white_mask = np.zeros((zoom_grey.shape[0], zoom_grey.shape[1]), np.uint8)
@@ -412,7 +451,7 @@ def overlay_images(overview_dl_fh, overview_ef_fh, zoom_fh, output_fh, circle=Fa
                                                                          percent_arc_length=3,
                                                                          retreival_method=cv2.RETR_TREE,
                                                                          bilateral=False, blur_image=True,
-                                                                         blur_iterations=30)
+                                                                         blur_iterations=30, debug=debug)
 
                 # create final convex shape mask
                 black_white_mask_2 = np.zeros((zoom_grey.shape[0], zoom_grey.shape[1]), np.uint8)
